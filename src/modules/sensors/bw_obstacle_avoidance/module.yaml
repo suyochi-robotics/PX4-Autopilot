@@ -1,0 +1,116 @@
+module_name: bw_obstacle_avoidance
+# serial_config:
+#     - command: bw_obstacle_avoidance start -d ${SERIAL_DEV}
+#       port_config_param:
+#         name: B_OBS_PORT
+#         group: Sensors
+
+parameters:
+    - group: Sensors
+      definitions:
+        B_OBS_ENABLE:
+            description:
+                short: Backward obstacle avoidance Enable or Disable
+                long: Backward obstacle avoidance Enable or Disable
+            type: enum
+            values:
+                0: Disabled
+                1: Enabled
+            default: 0
+            reboot_required: true
+
+        B_OBS_PORT:
+            description:
+                short: Serial port for Backward obstacle avoidance sensor
+                long: Serial port for Backward obstacle avoidance sensor
+            type: enum
+            values:
+                0: Disabled
+                1: /dev/ttyS1
+                2: /dev/ttyS2
+                3: /dev/ttyS3
+                4: /dev/ttyS4
+                5: /dev/ttyS5
+                6: /dev/ttyS6
+                7: /dev/ttyS7
+                8: /dev/ttyS8
+                9: /dev/ttyS9
+            default: 0
+            reboot_required: true
+
+        B_OBS_TYPE:
+            description:
+                short: Backward obstacle avoidance type
+                long: Specifies the sensor model used on backward obstacle avoidance.
+            type: enum
+            values:
+                0: Disabled
+                1: MicroBrain_R121
+            default: 0
+            reboot_required: true
+
+        B_OBS_H_FOV:
+            description:
+                short: Horizontal FoV of Backward obstacle avoidance sensor.
+                long: Horizontal FoV of Backward obstacle avoidance sensor.
+            type: float
+            min: 1
+            max: 30
+            unit: deg
+            default: 15
+            reboot_required: true
+
+        B_OBS_V_FOV:
+            description:
+                short: Vertical FoV of Backward obstacle avoidance sensor.
+                long: Vertical FoV of Backward obstacle avoidance sensor.
+            type: float
+            min: 1
+            max: 15
+            unit: deg
+            default: 5
+            reboot_required: true
+
+        B_OBS_MIN_RNG:
+            description:
+                short: Minimum range of Backward obstacle avoidance sensor.
+                long: Minimum measurable range for the sensor in meters.
+            type: float
+            min: 0.0
+            max: 100.0
+            unit: m
+            default: 0.2
+            reboot_required: true
+
+        B_OBS_MAX_RNG:
+            description:
+                short: Maximum range of Backward obstacle avoidance sensor
+                long: Maximum measurable range for the sensor in meters.
+            type: float
+            min: 0.0
+            max: 100.0
+            unit: m
+            default: 30.0
+            reboot_required: true
+
+        B_OBS_SL_RNG:
+            description:
+                short: Slowdown trigger range for Backward obstacle avoidance
+                long: Distance at which the vehicle should start slowing down due to obstacle detection in backside.
+            type: float
+            min: 0.0
+            max: 100.0
+            unit: m
+            default: 10.0
+            reboot_required: true
+
+        B_OBS_ST_RNG:
+            description:
+                short: Obstacle avoidance range for Backward obstacle avoidance
+                long: Distance within which the vehicle should perform backside obstacle avoidance.
+            type: float
+            min: 0.0
+            max: 100.0
+            unit: m
+            default: 5.0
+            reboot_required: true

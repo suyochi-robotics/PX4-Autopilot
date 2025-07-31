@@ -232,3 +232,17 @@ then
 	# start last (wait for possible icm20948 passthrough mode)
 	ak09916 -X -q start
 fi
+if param compare F_OBS_ENABLE 1
+then
+	fw_obstacle_avoidance start
+fi
+
+if param compare B_OBS_ENABLE 1
+then
+	bw_obstacle_avoidance start
+fi
+
+if param compare TR_FL_ENABLE 1
+then
+	terrain_following start
+fi

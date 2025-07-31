@@ -1,0 +1,102 @@
+module_name: terrain_following
+# serial_config:
+#     - command: terrain_following start -d ${SERIAL_DEV}
+#       port_config_param:
+#         name: TR_FL_PORT
+#         group: Sensors
+
+parameters:
+  - group: Sensors
+    definitions:
+      TR_FL_ENABLE:
+        description:
+          short: sensor Enable or Disabled
+          long:
+            Specifies the sensor is enabled or disabled.
+        type: enum
+        values:
+          0: Disabled
+          1: Enabled
+        default: 0
+
+      TR_FL_PORT:
+          description:
+              short: Serial port for Terrain Following sensor
+              long: Serial port for Terrain Following sensor
+          type: enum
+          values:
+              0: Disabled
+              1: /dev/ttyS1
+              2: /dev/ttyS2
+              3: /dev/ttyS3
+              4: /dev/ttyS4
+              5: /dev/ttyS5
+              6: /dev/ttyS6
+              7: /dev/ttyS7
+              8: /dev/ttyS8
+              9: /dev/ttyS9
+          default: 0
+          reboot_required: true
+
+      TR_FL_TYPE:
+        description:
+          short: terrain following type
+          long: Specifies the sensor model used on Terrain Following.
+        type: enum
+        values:
+          0: Disabled
+          1: MicroBrain H201
+        default: 0
+
+      TR_FL_H_FOV:
+        description:
+          short: Horizontal FoV of terrain_following_sensor
+          long: Horizontal FoV of terrain_following_sensor
+        type: float
+        min: 1
+        max: 60
+        unit: 'deg'
+        default: 15
+
+      TR_FL_V_FOV:
+        description:
+          short: Vertical FoV of terrain_following_sensor
+          long: Vertical FoV of terrain_following_sensor
+        type: float
+        min: 1
+        max: 15
+        unit: 'deg'
+        default: 5
+
+      TR_FL_MIN_RNG:
+        description:
+          short: Minimum range of terrain_following_sensor
+          long: |
+            Minimum measurable range for the sensor in meters.
+        type: float
+        min: 0.0
+        max: 100.0
+        unit: m
+        default: 0.2
+
+      TR_FL_MAX_RNG:
+        description:
+          short: Maximum range of terrain_following_sensor
+          long: |
+            Maximum measurable range for the sensor in meters.
+        type: float
+        min: 0.0
+        max: 100.0
+        unit: m
+        default: 30.0
+
+      TR_FL_RNG:
+        description:
+          short: Terrain following range for terrain_following_sensor
+          long: |
+            Effective range used for terrain following or altitude control.
+        type: float
+        min: 0.0
+        max: 100.0
+        unit: m
+        default: 3.0

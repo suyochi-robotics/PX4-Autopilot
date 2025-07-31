@@ -60,6 +60,17 @@ endif()
 if(CONFIG_SENSORS_VEHICLE_OPTICAL_FLOW)
 	add_subdirectory(vehicle_optical_flow)
 endif()
+if (CONFIG_SENSORS_TERRAIN_FOLLOWING)
+	add_subdirectory(terrain_following)
+endif()
+
+if (CONFIG_SENSORS_FW_OBSTACLE_AVOIDANCE)
+	add_subdirectory(fw_obstacle_avoidance)
+endif()
+
+if (CONFIG_SENSORS_BW_OBSTACLE_AVOIDANCE)
+	add_subdirectory(bw_obstacle_avoidance)
+endif()
 
 px4_add_module(
 	MODULE modules__sensors
@@ -107,4 +118,15 @@ endif()
 
 if(CONFIG_SENSORS_VEHICLE_OPTICAL_FLOW)
 	target_link_libraries(modules__sensors PRIVATE vehicle_optical_flow)
+endif()
+if (CONFIG_SENSORS_TERRAIN_FOLLOWING)
+	target_link_libraries(modules__sensors PRIVATE sensors__terrain_following)
+endif()
+
+if (CONFIG_SENSORS_FW_OBSTACLE_AVOIDANCE)
+	target_link_libraries(modules__sensors PRIVATE sensors__fw_obstacle_avoidance)
+endif()
+
+if (CONFIG_SENSORS_BW_OBSTACLE_AVOIDANCE)
+	target_link_libraries(modules__sensors PRIVATE sensors__bw_obstacle_avoidance)
 endif()
