@@ -79,8 +79,6 @@
 [submodule "boards/modalai/voxl2/libfc-sensor-api"]
 	path = boards/modalai/voxl2/libfc-sensor-api
 	url = https://gitlab.com/voxl-public/voxl-sdk/core-libs/libfc-sensor-api.git
-[submodule "mavlink"]
-	url = https://github.com/suyochi-robotics/mavlink.git
 [submodule "src/modules/mavlink/mavlink"]
 	path = src/modules/mavlink/mavlink
 	url = https://github.com/suyochi-robotics/mavlink.git
