@@ -84,3 +84,4 @@
 [submodule "src/modules/mavlink/mavlink"]
 	path = src/modules/mavlink/mavlink
 	url = https://github.com/suyochi-robotics/mavlink.git
+	branch = suyochi-dev-mavlink
