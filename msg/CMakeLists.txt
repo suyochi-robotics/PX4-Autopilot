@@ -187,6 +187,7 @@ set(msg_files
 	SensorBaro.msg
 	SensorCombined.msg
 	SensorCorrection.msg
+	SensorFlowSensor.msg
 	SensorGnssRelative.msg
 	SensorGps.msg
 	SensorGyro.msg

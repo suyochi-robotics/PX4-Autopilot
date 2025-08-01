@@ -60,3 +60,9 @@ functions:
         condition: "PPS_CAP_ENABLE==0"
         text: "PPS needs to be enabled via PPS_CAP_ENABLE parameter."
       exclude_from_actuator_testing: true
+    Flow_Sensor:
+      start: 2071
+      note:
+        condition: "FLOW_CAP_ENABLE==0"
+        text: "Custom flow sensor input via input capture."
+      exclude_from_actuator_testing: true
