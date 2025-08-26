@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_TF02ICAN
+    bool "tf02i_can"
+    default n
+    ---help---
+        Enable support for Benewake TF02-i CAN distance sensor
