@@ -184,26 +184,6 @@ int Microbrain_R121_1::collect()
 		return PX4_ERROR;
 	}
 
-	// tcflush(_fd, TCIFLUSH);  // clear stale data
-	// // Use a 0 ms timeout for non-blocking check
-	// int poll_ret = ::poll(&_fds, 1, 100);
-
-	// if (poll_ret < 0 || !(_fds.revents & POLLIN)) {
-	// 	PX4_INFO("Data is not available on serial port");
-	// 	return PX4_ERROR;
-	// }
-
-		// Check the number of bytes available in the buffer
-	// int bytes_available = 0;
-	// ::ioctl(_fd, FIONREAD, (unsigned long)&bytes_available);
-
-	// if (!bytes_available) {
-	// 	perf_end(_sample_perf);
-	// 	PX4_ERR("No bytes available");
-	// 	return PX4_ERROR;
-	// }
-
-
 	int ret = 0;
 
     	do {
@@ -241,30 +221,28 @@ int Microbrain_R121_1::collect()
 					PX4_DEBUG("Invalid data bytes: %d, %d", all_bytes[2], all_bytes[3]);
 					continue;
 				}
-				uint8_t calc_crc = calculateCRC(all_bytes, 19);
+				// Commented CRC validation logic to improve the performance
+				/*uint8_t calc_crc = calculateCRC(all_bytes, 19);
 				uint8_t actual_crc = all_bytes[19];
-				if (calc_crc == actual_crc) {
-					uint16_t distance_mm = (all_bytes[2] << 8) | all_bytes[3];
-					distance_m = distance_mm / 1000.0;
-					PX4_INFO("Distance: %f" , (double)distance_m);
-					if (distance_m > _min_range && distance_m < _max_range) {
-						_px4_rangefinder.update(timestamp_sample, distance_m);
-					}
-				} else {
+				if (calc_crc == actual_crc) {*/
+				uint16_t distance_mm = (all_bytes[2] << 8) | all_bytes[3];
+				distance_m = distance_mm / 1000.0;
+				//PX4_INFO("Distance: %f" , (double)distance_m);
+				_px4_rangefinder.update(timestamp_sample, distance_m);
+				/*} else {
 					PX4_DEBUG("CRC mismatch!");
 					perf_count(_comms_errors);
 					perf_end(_sample_perf);
 
 					// only throw an error if we time out
 					if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
-						/* flush anything in RX buffer */
 						tcflush(_fd, TCIFLUSH);
 						return ret;
 
 					} else {
 						return -EAGAIN;
 					}
-				}
+				}*/
 			} else {
 				PX4_DEBUG("Second byte headed didn't match");
 				perf_count(_comms_errors);
