@@ -1,4 +1,4 @@
-#gzargcomplete
+gzargcomplete
 argparse>=1.2
 cerberus
 coverage
