@@ -76,6 +76,7 @@
 #include "streams/ESTIMATOR_STATUS.hpp"
 #include "streams/EXTENDED_SYS_STATE.hpp"
 #include "streams/FLIGHT_INFORMATION.hpp"
+#include "streams/FLOW_SENSOR_MAV.hpp"
 #include "streams/GLOBAL_POSITION_INT.hpp"
 #include "streams/GPS_GLOBAL_ORIGIN.hpp"
 #include "streams/GPS_RAW_INT.hpp"
@@ -505,6 +506,9 @@ static const StreamListItem streams_list[] = {
 #if defined(CURRENT_MODE_HPP)
 	create_stream_list_item<MavlinkStreamCurrentMode>(),
 #endif // CURRENT_MODE_HPP
+#if defined(FLOW_SENSOR_MAV_HPP)
+	create_stream_list_item<MavlinkStreamFlowSensor>(),
+#endif //FLOW_SENSOR_MAV_HPP
 };
 
 const char *get_stream_name(const uint16_t msg_id)
