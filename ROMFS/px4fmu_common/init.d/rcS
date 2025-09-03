@@ -335,6 +335,12 @@ else
 		fi
 	fi
 
+	# FLOW capture driver
+	if param greater -s FLOW_CAP_ENABLE 0
+	then
+		flow_sensor start
+	fi
+
 	#
 	# Sensors System (start before Commander so Preflight checks are properly run).
 	# Commander needs to be this early for in-air-restarts.
