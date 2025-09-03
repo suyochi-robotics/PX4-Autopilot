@@ -64,13 +64,6 @@ start(const char *module_name, const char *port, uint8_t rotation, float min_ran
 			bw_obs_dev = nullptr;
 			return PX4_ERROR;
 		}
-		// else {
-		// 	while (true) {
-		// 		bw_obs_dev->collect();
-		// 		px4_usleep(0.05);
-		// 	}
-		// }
-
 	} else {
 		PX4_ERR("Unsupported Sensor");
 	}
@@ -147,30 +140,9 @@ $     bw_obstacle_avoidance
 
 extern "C" __EXPORT int bw_obstacle_avoidance_main(int argc, char *argv[])
 {
-	//int ch = 0;
 	uint8_t rotation = distance_sensor_s::ROTATION_BACKWARD_FACING;
 	char device_path[20] {};
 	int myoptind = 1;
-	//const char *myoptarg = nullptr;
-
-	// while ((ch = px4_getopt(argc, argv, "d:", &myoptind, &myoptarg)) != EOF) {
-	// 	switch (ch) {
-	// 	case 'd':
-	// 		device_path = myoptarg;
-	// 		break;
-
-	// 	default:
-	// 		PX4_WARN("Unknown option!");
-	// 		return PX4_ERROR;
-	// 	}
-	// }
-
-	// if (myoptind >= argc) {
-	// 	PX4_ERR("unrecognized command");
-	// 	return bw_obs_avoidance::usage();
-	// }
-
-
 	// === Load parameters ===
 	int32_t b_obs_enable;
 	int32_t b_obs_port;
@@ -213,6 +185,7 @@ extern "C" __EXPORT int bw_obstacle_avoidance_main(int argc, char *argv[])
 		return PX4_ERROR;
 	}
 
+	/*
 	PX4_INFO("MODULE_NAME: %s", MODULE_NAME);
 	PX4_INFO("B_OBS_ENABLE: %ld", b_obs_enable);
 	PX4_INFO("B_OBS_PORT: %s", device_path);
@@ -223,7 +196,7 @@ extern "C" __EXPORT int bw_obstacle_avoidance_main(int argc, char *argv[])
 	PX4_INFO("B_OBS_MAX_RNG: %.2f m", (double)b_obs_max_rng);
 	PX4_INFO("B_OBS_RNG: %.2f m", (double)b_obs_sl_rng);
 	PX4_INFO("B_OBS_RNG: %.2f m", (double)b_obs_st_rng);
-
+	*/
 
 	if (!strcmp(argv[myoptind], "start")) {
 		if (strcmp(device_path, "") != 0) {

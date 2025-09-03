@@ -138,30 +138,9 @@ $     fw_obstacle_avoidance
 
 extern "C" __EXPORT int fw_obstacle_avoidance_main(int argc, char *argv[])
 {
-	//int ch = 0;
 	uint8_t rotation = distance_sensor_s::ROTATION_FORWARD_FACING;
 	char device_path[20]{};
 	int myoptind = 1;
-	//const char *myoptarg = nullptr;
-
-	// while ((ch = px4_getopt(argc, argv, "d:", &myoptind, &myoptarg)) != EOF) {
-	// 	switch (ch) {
-	// 	case 'd':
-	// 		device_path = myoptarg;
-	// 		break;
-
-	// 	default:
-	// 		PX4_WARN("Unknown option!");
-	// 		return PX4_ERROR;
-	// 	}
-	// }
-
-	// if (myoptind >= argc) {
-	// 	PX4_ERR("unrecognized command");
-	// 	return fw_obs_avoidance::usage();
-	// }
-
-
 	// === Fetch all parameters to ensure they're registered ===
 	int32_t f_obs_port;
 	int32_t f_obs_enable;
@@ -202,6 +181,7 @@ extern "C" __EXPORT int fw_obstacle_avoidance_main(int argc, char *argv[])
 		return PX4_ERROR;
 	}
 
+	/*
 	PX4_INFO("MODULE_NAME: %s", MODULE_NAME);
 	PX4_INFO("F_OBS_ENABLE: %ld", f_obs_enable);
 	PX4_INFO("F_OBS_PORT: %s", device_path);
@@ -212,6 +192,7 @@ extern "C" __EXPORT int fw_obstacle_avoidance_main(int argc, char *argv[])
 	PX4_INFO("F_OBS_MAX_RNG: %.2f", (double)f_obs_max_rng);
 	PX4_INFO("F_OBS_SL_RNG: %.2f", (double)f_obs_sl_rng);
 	PX4_INFO("F_OBS_ST_RNG: %.2f", (double)f_obs_st_rng);
+	*/
 
 	if (!strcmp(argv[myoptind], "start")) {
 		if (strcmp(device_path, "") != 0) {

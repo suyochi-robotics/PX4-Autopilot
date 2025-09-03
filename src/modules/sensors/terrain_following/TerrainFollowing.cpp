@@ -139,31 +139,9 @@ $     terrain_following
 
 extern "C" __EXPORT int terrain_following_main(int argc, char *argv[])
 {
-	//int ch = 0;
 	uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
 	char device_path[20] {};
 	int myoptind = 1;
-	// const char *myoptarg = nullptr;
-
-	// while ((ch = px4_getopt(argc, argv, "d:", &myoptind, &myoptarg)) != EOF) {
-	// 	switch (ch) {
-	// 	case 'd':
-	// 		device_path = myoptarg;
-	// 		break;
-
-	// 	default:
-	// 		PX4_WARN("Unknown option!");
-	// 		return PX4_ERROR;
-	// 	}
-	// }
-
-	// if (myoptind >= argc) {
-	// 	PX4_ERR("unrecognized command");
-	// 	return terrain_following::usage();
-	// }
-
-
-
 	// === Load parameters ===
 	int32_t tr_fl_port;
 	int32_t tr_fl_enable;
@@ -202,7 +180,7 @@ extern "C" __EXPORT int terrain_following_main(int argc, char *argv[])
 		PX4_INFO("Kindly set valid TR_FL_PORT");
 		return PX4_ERROR;
 	}
-
+	/*
 	PX4_INFO("MODULE_NAME: %s", MODULE_NAME);
 	PX4_INFO("TR_FL_ENABLE: %ld", tr_fl_enable);
 	PX4_INFO("TR_FL_PORT: %s", device_path);
@@ -212,6 +190,7 @@ extern "C" __EXPORT int terrain_following_main(int argc, char *argv[])
 	PX4_INFO("TR_FL_MIN_RNG: %.2f m", (double)tr_fl_min_rng);
 	PX4_INFO("TR_FL_MAX_RNG: %.2f m", (double)tr_fl_max_rng);
 	PX4_INFO("TR_FL_RNG: %.2f m", (double)tr_fl_rng);
+	*/
 
 	if (!strcmp(argv[myoptind], "start")) {
 		if (strcmp(device_path, "") != 0) {

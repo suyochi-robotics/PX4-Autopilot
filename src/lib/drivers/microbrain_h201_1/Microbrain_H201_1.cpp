@@ -253,11 +253,8 @@ int Microbrain_H201_1::collect()
 				distance_m = (high * 128) + low;
 				distance_m = (distance_m * 2.5l) / 100;
 				// publish most recent valid measurement from buffer
-				if (distance_m > _min_range && distance_m < _max_range) {
-					_px4_rangefinder.update(timestamp_sample, distance_m);
-				}
-				PX4_INFO("time: %llu distance: %0.2f", timestamp_sample, (double)distance_m);
-
+				_px4_rangefinder.update(timestamp_sample, distance_m);
+				//PX4_INFO("time: %llu distance: %0.2f", timestamp_sample, (double)distance_m);
 			}
 
 		}
