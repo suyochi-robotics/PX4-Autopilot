@@ -256,7 +256,7 @@ int Microbrain_H201_1::collect()
 				if (distance_m > _min_range && distance_m < _max_range) {
 					_px4_rangefinder.update(timestamp_sample, distance_m);
 				}
-				PX4_INFO("time: %llu distance: %0.2f", timestamp_sample, (double)distance_m);
+				// PX4_INFO("time: %llu distance: %0.2f", timestamp_sample, (double)distance_m);
 
 			}
 
