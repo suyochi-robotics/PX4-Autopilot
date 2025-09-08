@@ -97,4 +97,7 @@ private:
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};
 	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": read")};
 
+	DEFINE_PARAMETERS(
+        (ParamInt<px4::params::SENS_TFMINI_ROT>) _param_tfmini_rot
+    )
 };

@@ -41,11 +41,14 @@
 
 #include "FLOW_SENSOR.hpp"
 
-
+int FlowSensor::_start_called_count = 0;
+int FlowSensor::_instances_created_count = 0;
 FlowSensor::FlowSensor() :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
 	ModuleParams(nullptr)
 {
+	_instances_created_count++;
+	px4_INFO( " instaqnce creted  %d : _instances_created_count ")
 	_flow_pub.advertise();
 	ScheduleNow();
 
@@ -171,6 +174,7 @@ int FlowSensor::gpio_interrupt_callback(int irq, void *context, void *arg)
 
 int FlowSensor::task_spawn(int argc, char *argv[])
 {
+	 _start_called_count++;
 	FlowSensor *instance = new FlowSensor();
 
 	if (instance) {

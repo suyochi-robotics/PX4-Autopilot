@@ -48,5 +48,11 @@ private:
 	uORB::PublicationMulti<sensor_flow_sensor_s> _flow_pub{ORB_ID(sensor_flow_sensor)};
 
 	static int gpio_interrupt_callback(int irq, void *context, void *arg);
+
+	// 👉 New static counter for how many times "start" was called
+	static int _start_called_count;
+	static int _instances_created_count;
+
+
 };
 

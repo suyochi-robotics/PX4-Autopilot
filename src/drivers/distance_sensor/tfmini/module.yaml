@@ -5,3 +5,23 @@ serial_config:
         name: SENS_TFMINI_CFG
         group: Sensors
 
+parameters:
+    - group: Sensors
+      definitions:
+        SENS_TFMINI_ROT:
+            description:
+                short: Serial port for Backward obstacle avoidance sensor
+                long: Serial port for Backward obstacle avoidance sensor
+            type: enum
+            values:
+                0: ROTATION_FORWARD_FACING
+                2: ROTATION_RIGHT_FACING
+                4: ROTATION_BACKWARD_FACING
+                6: ROTATION_LEFT_FACING
+                24: ROTATION_UPWARD_FACING
+                25: ROTATION_DOWNWARD_FACING
+                100: ROTATION_CUSTOM
+            default: 0
+            reboot_required: false
+
+

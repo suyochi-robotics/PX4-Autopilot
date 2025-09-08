@@ -163,6 +163,8 @@ extern "C" __EXPORT int tfmini_main(int argc, char *argv[])
 		}
 	}
 
+
+
 	if (myoptind >= argc) {
 		PX4_ERR("unrecognized command");
 		return tfmini::usage();

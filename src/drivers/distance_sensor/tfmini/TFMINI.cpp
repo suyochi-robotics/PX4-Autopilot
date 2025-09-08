@@ -74,6 +74,8 @@ TFMINI::init()
 {
 	int32_t hw_model = 1; // only one model so far...
 
+
+
 	switch (hw_model) {
 	case 1: // TFMINI (12m, 100 Hz)
 		// Note:
@@ -84,7 +86,7 @@ TFMINI::init()
 		_px4_rangefinder.set_min_distance(0.4f);
 		_px4_rangefinder.set_max_distance(12.0f);
 		_px4_rangefinder.set_fov(math::radians(1.15f));
-
+		_px4_rangefinder.
 		break;
 
 	default:
