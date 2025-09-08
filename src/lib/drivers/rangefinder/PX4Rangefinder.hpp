@@ -42,7 +42,7 @@ class PX4Rangefinder
 {
 public:
 	PX4Rangefinder(const uint32_t device_id,
-		       const uint8_t device_orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING);
+		       const uint8_t device_orientation );
 	~PX4Rangefinder();
 
 	// Set the MAV_DISTANCE_SENSOR type (LASER, ULTRASOUND, INFRARED, RADAR)
@@ -58,7 +58,7 @@ public:
 	void set_max_distance(const float distance) { _distance_sensor_pub.get().max_distance = distance; }
 	void set_min_distance(const float distance) { _distance_sensor_pub.get().min_distance = distance; }
 
-	void set_orientation(const uint8_t device_orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING);
+	void set_orientation(const uint8_t device_orientation );
 
 	void update(const hrt_abstime &timestamp_sample, const float distance, const int8_t quality = -1);
 

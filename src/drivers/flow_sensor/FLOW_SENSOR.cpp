@@ -48,7 +48,7 @@ FlowSensor::FlowSensor() :
 	ModuleParams(nullptr)
 {
 	_instances_created_count++;
-	px4_INFO( " instaqnce creted  %d : _instances_created_count ")
+	PX4_INFO( " instance creted  :%d " ,_instances_created_count );
 	_flow_pub.advertise();
 	ScheduleNow();
 
