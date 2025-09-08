@@ -70,7 +70,7 @@ extern "C" __EXPORT int tf02pro_main(int argc, char *argv[])
 	if (handle != PARAM_INVALID) {
 		int32_t tmp = 0;
 		if (param_get(handle, &tmp) == PX4_OK) {
-			cli.rotation = static_cast<uint8_t>(tmp);
+			cli.rotation = (Rotation)(static_cast<uint8_t>(tmp));
 		}
 	}
 

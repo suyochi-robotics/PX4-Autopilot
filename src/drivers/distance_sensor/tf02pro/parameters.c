@@ -44,7 +44,7 @@ PARAM_DEFINE_INT32(SENS_EN_TF02PRO, 0);
 
 
 /**
- * Parameter to enable BatMon module
+ * Parameter to set Orientation of TF02PRO
  *
  * @reboot_required true
  * @group Sensors
