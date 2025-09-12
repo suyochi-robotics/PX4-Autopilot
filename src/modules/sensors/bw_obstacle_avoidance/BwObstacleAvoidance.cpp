@@ -214,15 +214,15 @@ extern "C" __EXPORT int bw_obstacle_avoidance_main(int argc, char *argv[])
 	}
 
 	PX4_INFO("MODULE_NAME: %s", MODULE_NAME);
-	PX4_INFO("B_OBS_ENABLE: %ld", b_obs_enable);
-	PX4_INFO("B_OBS_PORT: %s", device_path);
-	PX4_INFO("B_OBS_TYPE: %ld", b_obs_type);
-	PX4_INFO("B_OBS_H_FOV: %.2f", (double)b_obs_h_fov);
-	PX4_INFO("B_OBS_V_FOV: %.2f", (double)b_obs_v_fov);
-	PX4_INFO("B_OBS_MIN_RNG: %.2f m", (double)b_obs_min_rng);
-	PX4_INFO("B_OBS_MAX_RNG: %.2f m", (double)b_obs_max_rng);
-	PX4_INFO("B_OBS_RNG: %.2f m", (double)b_obs_sl_rng);
-	PX4_INFO("B_OBS_RNG: %.2f m", (double)b_obs_st_rng);
+	// PX4_INFO("B_OBS_ENABLE: %ld", b_obs_enable);
+	// PX4_INFO("B_OBS_PORT: %s", device_path);
+	// PX4_INFO("B_OBS_TYPE: %ld", b_obs_type);
+	// PX4_INFO("B_OBS_H_FOV: %.2f", (double)b_obs_h_fov);
+	// PX4_INFO("B_OBS_V_FOV: %.2f", (double)b_obs_v_fov);
+	// PX4_INFO("B_OBS_MIN_RNG: %.2f m", (double)b_obs_min_rng);
+	// PX4_INFO("B_OBS_MAX_RNG: %.2f m", (double)b_obs_max_rng);
+	// PX4_INFO("B_OBS_RNG: %.2f m", (double)b_obs_sl_rng);
+	// PX4_INFO("B_OBS_RNG: %.2f m", (double)b_obs_st_rng);
 
 
 	if (!strcmp(argv[myoptind], "start")) {

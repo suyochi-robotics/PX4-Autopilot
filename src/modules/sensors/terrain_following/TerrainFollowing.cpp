@@ -204,14 +204,14 @@ extern "C" __EXPORT int terrain_following_main(int argc, char *argv[])
 	}
 
 	PX4_INFO("MODULE_NAME: %s", MODULE_NAME);
-	PX4_INFO("TR_FL_ENABLE: %ld", tr_fl_enable);
-	PX4_INFO("TR_FL_PORT: %s", device_path);
-	PX4_INFO("TR_FL_TYPE: %ld", tr_fl_type);
-	PX4_INFO("TR_FL_H_FOV: %.2f", (double)tr_fl_h_fov);
-	PX4_INFO("TR_FL_V_FOV: %.2f", (double)tr_fl_v_fov);
-	PX4_INFO("TR_FL_MIN_RNG: %.2f m", (double)tr_fl_min_rng);
-	PX4_INFO("TR_FL_MAX_RNG: %.2f m", (double)tr_fl_max_rng);
-	PX4_INFO("TR_FL_RNG: %.2f m", (double)tr_fl_rng);
+	// PX4_INFO("TR_FL_ENABLE: %ld", tr_fl_enable);
+	// PX4_INFO("TR_FL_PORT: %s", device_path);
+	// PX4_INFO("TR_FL_TYPE: %ld", tr_fl_type);
+	// PX4_INFO("TR_FL_H_FOV: %.2f", (double)tr_fl_h_fov);
+	// PX4_INFO("TR_FL_V_FOV: %.2f", (double)tr_fl_v_fov);
+	// PX4_INFO("TR_FL_MIN_RNG: %.2f m", (double)tr_fl_min_rng);
+	// PX4_INFO("TR_FL_MAX_RNG: %.2f m", (double)tr_fl_max_rng);
+	// PX4_INFO("TR_FL_RNG: %.2f m", (double)tr_fl_rng);
 
 	if (!strcmp(argv[myoptind], "start")) {
 		if (strcmp(device_path, "") != 0) {

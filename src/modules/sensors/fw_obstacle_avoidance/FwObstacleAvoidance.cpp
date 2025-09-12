@@ -203,15 +203,15 @@ extern "C" __EXPORT int fw_obstacle_avoidance_main(int argc, char *argv[])
 	}
 
 	PX4_INFO("MODULE_NAME: %s", MODULE_NAME);
-	PX4_INFO("F_OBS_ENABLE: %ld", f_obs_enable);
-	PX4_INFO("F_OBS_PORT: %s", device_path);
-	PX4_INFO("F_OBS_TYPE: %ld", f_obs_type);
-	PX4_INFO("F_OBS_H_FOV: %.2f", (double)f_obs_h_fov);
-	PX4_INFO("F_OBS_V_FOV: %.2f", (double)f_obs_v_fov);
-	PX4_INFO("F_OBS_MIN_RNG: %.2f", (double)f_obs_min_rng);
-	PX4_INFO("F_OBS_MAX_RNG: %.2f", (double)f_obs_max_rng);
-	PX4_INFO("F_OBS_SL_RNG: %.2f", (double)f_obs_sl_rng);
-	PX4_INFO("F_OBS_ST_RNG: %.2f", (double)f_obs_st_rng);
+	// PX4_INFO("F_OBS_ENABLE: %ld", f_obs_enable);
+	// PX4_INFO("F_OBS_PORT: %s", device_path);
+	// PX4_INFO("F_OBS_TYPE: %ld", f_obs_type);
+	// PX4_INFO("F_OBS_H_FOV: %.2f", (double)f_obs_h_fov);
+	// PX4_INFO("F_OBS_V_FOV: %.2f", (double)f_obs_v_fov);
+	// PX4_INFO("F_OBS_MIN_RNG: %.2f", (double)f_obs_min_rng);
+	// PX4_INFO("F_OBS_MAX_RNG: %.2f", (double)f_obs_max_rng);
+	// PX4_INFO("F_OBS_SL_RNG: %.2f", (double)f_obs_sl_rng);
+	// PX4_INFO("F_OBS_ST_RNG: %.2f", (double)f_obs_st_rng);
 
 	if (!strcmp(argv[myoptind], "start")) {
 		if (strcmp(device_path, "") != 0) {

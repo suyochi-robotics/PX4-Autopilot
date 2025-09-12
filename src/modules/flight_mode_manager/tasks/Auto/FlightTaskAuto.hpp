@@ -53,6 +53,11 @@
 #include "StickAccelerationXY.hpp"
 #include "StickYaw.hpp"
 
+#include <lib/collision_prevention/CollisionPrevention.hpp>
+
+#include <uORB/Publication.hpp>
+#include <uORB/topics/vehicle_command.h>
+
 // TODO: make this switchable in the board config, like a module
 #if CONSTRAINED_FLASH
 #include <lib/avoidance/ObstacleAvoidance_dummy.hpp>
@@ -206,10 +211,16 @@ private:
 
 	matrix::Vector3f _initial_land_position;
 
+	uORB::Publication<vehicle_command_s> _vehicle_command_pub{ORB_ID(vehicle_command)};
+
+        //Trying to Add Collision Prevention
+	CollisionPrevention _collision_prevention{this};
+
 	void _limitYawRate(); /**< Limits the rate of change of the yaw setpoint. */
 	bool _evaluateTriplets(); /**< Checks and sets triplets. */
 	bool _isFinite(const position_setpoint_s &sp); /**< Checks if all waypoint triplets are finite. */
 	bool _evaluateGlobalReference(); /**< Check is global reference is available. */
 	State _getCurrentState(); /**< Computes the current vehicle state based on the vehicle position and navigator triplets. */
 	void _set_heading_from_mode(); /**< @see  MPC_YAW_MODE */
+
 };
