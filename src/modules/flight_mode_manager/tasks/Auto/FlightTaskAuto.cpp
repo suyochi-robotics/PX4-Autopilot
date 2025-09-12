@@ -155,12 +155,26 @@ bool FlightTaskAuto::update()
 		_velocity_setpoint.setNaN();
 		break;
 	}
+	// Custom Behaviour
 
-	if (_param_com_obs_avoid.get()) {
-		_obstacle_avoidance.updateAvoidanceDesiredSetpoints(_position_setpoint, _velocity_setpoint, (int)_type);
-		_obstacle_avoidance.injectAvoidanceSetpoints(_position_setpoint, _velocity_setpoint, _yaw_setpoint,
-				_yawspeed_setpoint);
+	// Run OA first
+	_obstacle_avoidance.updateAvoidanceDesiredSetpoints(_position_setpoint, _velocity_setpoint, (int)_type);
+
+	// >>> Custom OA-failure handling <<<
+	if (!PX4_ISFINITE(_position_setpoint(0)) || !PX4_ISFINITE(_position_setpoint(1))) {
+   	 // OA did not return a valid XY setpoint → pause mission
+	    vehicle_command_s cmd{};
+	    cmd.command = vehicle_command_s::VEHICLE_CMD_DO_PAUSE_CONTINUE;
+	    cmd.param1 = 0; // 0 = Pause
+	    cmd.target_system = 1;
+	    cmd.target_component = 1;
+	    cmd.timestamp = hrt_absolute_time();
+	    _vehicle_command_pub.publish(cmd);
 	}
+
+	// Inject OA results if valid
+	_obstacle_avoidance.injectAvoidanceSetpoints(
+    	_position_setpoint, _velocity_setpoint, _yaw_setpoint, _yawspeed_setpoint);
 
 	_checkEmergencyBraking();
 	Vector3f waypoints[] = {_prev_wp, _position_setpoint, _next_wp};

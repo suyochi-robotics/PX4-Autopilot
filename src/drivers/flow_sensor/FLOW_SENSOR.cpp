@@ -48,7 +48,7 @@ FlowSensor::FlowSensor() :
 	ModuleParams(nullptr)
 {
 	_instances_created_count++;
-	PX4_INFO( " instance creted  :%d " ,_instances_created_count );
+	PX4_INFO( " instances created  :%d " , _instances_created_count );
 	_flow_pub.advertise();
 	ScheduleNow();
 
@@ -156,7 +156,7 @@ void FlowSensor::Run()
 		flow_msg.pulse_count = count.load();
 		_flow_pub.publish(flow_msg);
 
-		PX4_INFO("Flow rate: %.2f L/min (%ld pulses)", (double)flow_rate_lpm, count.load());
+		// PX4_INFO("Flow rate: %.2f L/min (%ld pulses)", (double)flow_rate_lpm, count.load());
 		_last_publish_time = hrt_absolute_time();
 	}
 
@@ -175,6 +175,7 @@ int FlowSensor::gpio_interrupt_callback(int irq, void *context, void *arg)
 int FlowSensor::task_spawn(int argc, char *argv[])
 {
 	 _start_called_count++;
+	 PX4_INFO("  start called %d times ",_start_called_count);
 	FlowSensor *instance = new FlowSensor();
 
 	if (instance) {

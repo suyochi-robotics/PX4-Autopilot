@@ -10,7 +10,7 @@
 
 #include <px4_arch/io_timer.h>
 #include <board_config.h>
-
+#include <px4_platform_common/log.h>
 #include <parameters/param.h>
 #include <systemlib/mavlink_log.h>
 
