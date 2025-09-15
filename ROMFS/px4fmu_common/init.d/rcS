@@ -579,7 +579,8 @@ else
 	then
 		zenoh start
 	fi
-
+	# obstacle_manager custom module
+	obstacle_manager start
 #
 # End of autostart.
 #

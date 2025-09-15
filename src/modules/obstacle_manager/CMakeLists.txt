@@ -36,6 +36,7 @@ px4_add_module(
 	MAIN obstacle_manager
 	SRCS
 		obstacle_manager.cpp
+		obstacle_manager.hpp
 	DEPENDS
 		px4_work_queue
 	)
