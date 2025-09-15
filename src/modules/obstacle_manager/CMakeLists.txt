@@ -30,6 +30,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
+
 px4_add_module(
 	MODULE modules__obstacle_manager
 	MAIN obstacle_manager
