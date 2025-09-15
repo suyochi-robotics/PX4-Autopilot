@@ -1,0 +1,5 @@
+menuconfig MODULES_OBSTACLE_MANAGER
+	bool "obstacle_manager"
+	default n
+	---help---
+		Enable support for obstacle_manager
