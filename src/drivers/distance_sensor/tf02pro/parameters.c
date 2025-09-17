@@ -40,3 +40,18 @@
  * @group Sensors
  */
 PARAM_DEFINE_INT32(SENS_EN_TF02PRO, 0);
+/**
+ * Parameter to set Orientation of TF02PRO
+ *
+ * @reboot_required true
+ * @group Sensors
+ * @value 0 ROTATION_FORWARD_FACING
+ * @value 2 ROTATION_RIGHT_FACING
+ * @value 4 ROTATION_BACKWARD_FACING
+ * @value 6 ROTATION_LEFT_FACING
+ * @value 24 ROTATION_UPWARD_FACING
+ * @value 25 ROTATION_DOWNWARD_FACING
+ * @value 100 ROTATION_CUSTOM
+ */
+PARAM_DEFINE_INT32(SENS_TF02PRO_ROT, 0);
+
