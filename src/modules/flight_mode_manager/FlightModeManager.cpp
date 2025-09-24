@@ -336,6 +336,7 @@ void FlightModeManager::generateTrajectorySetpoint(const float dt,
 		constraints = _current_task.task->getConstraints();
 	}
 
+
 	if (_takeoff_status_sub.updated()) {
 		takeoff_status_s takeoff_status;
 
@@ -347,6 +348,27 @@ void FlightModeManager::generateTrajectorySetpoint(const float dt,
 	if (_takeoff_state < takeoff_status_s::TAKEOFF_STATE_RAMPUP) {
 		// reactivate the task which will reset the setpoint to current state
 		_current_task.task->reActivate();
+	}
+
+
+	// >>> Collision Prevention Hook <<<
+	_collision_prevention.update();
+
+	if (_collision_prevention.is_active()) {
+		matrix::Vector2f vel_xy(setpoint.vx, setpoint.vy);
+		matrix::Vector2f curr_pos(vehicle_local_position.x, vehicle_local_position.y);
+		matrix::Vector2f curr_vel(vehicle_local_position.vx, vehicle_local_position.vy);
+
+		_collision_prevention.modifySetpoint(
+			vel_xy,
+			curr_pos,
+			curr_vel,
+			constraints.speed_up
+		);
+
+		// Write results back into trajectory setpoint
+		setpoint.vx = vel_xy(0);
+		setpoint.vy = vel_xy(1);
 	}
 
 

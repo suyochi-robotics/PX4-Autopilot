@@ -57,6 +57,9 @@
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 
+#include <collision_prevention/CollisionPrevention.hpp>
+
+
 #include <new>
 
 enum class FlightTaskError : int {
@@ -155,5 +158,8 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::MPC_POS_MODE>) _param_mpc_pos_mode
+
 	);
+
+	CollisionPrevention _collision_prevention;
 };
