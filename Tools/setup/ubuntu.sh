@@ -135,9 +135,7 @@ if [[ $INSTALL_NUTTX == "true" ]]; then
 		libisl-dev \
 		libmpc-dev \
 		libmpfr-dev \
-		libncurses5 \
-		libncurses5-dev \
-		libncursesw5-dev \
+		libncurses-dev \
 		libtool \
 		pkg-config \
 		screen \
@@ -205,6 +203,8 @@ if [[ $INSTALL_SIM == "true" ]]; then
 		java_version=13
 	elif [[ "${UBUNTU_RELEASE}" == "22.04" ]]; then
 		java_version=11
+	elif [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+		java_version=17
 	else
 		java_version=14
 	fi
@@ -220,7 +220,17 @@ if [[ $INSTALL_SIM == "true" ]]; then
 	sudo update-alternatives --set java $(update-alternatives --list java | grep "java-$java_version")
 
 	# Gazebo / Gazebo classic installation
-	if [[ "${UBUNTU_RELEASE}" == "22.04" ]]; then
+	if [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+                echo "Gazebo (Harmonic) will be installed"
+                # Add Gazebo binary repository
+                sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
+                        | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+                sudo apt-get update -y --quiet
+
+                # Install Gazebo Harmonic
+                gazebo_packages="gz-harmonic"
+	elif [[ "${UBUNTU_RELEASE}" == "22.04" ]]; then
 		echo "Gazebo (Garden) will be installed"
 		echo "Earlier versions will be removed"
 		# Add Gazebo binary repository
