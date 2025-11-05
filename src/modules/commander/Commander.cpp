@@ -1565,6 +1565,10 @@ void Commander::handleCommandsFromModeExecutors()
 
 void Commander::handleObstacleDetection()
 {
+	if (_vehicle_status.arming_state != vehicle_status_s::ARMING_STATE_ARMED) {
+    		return;
+	}
+
 	if (!_param_obst_en_auto.get()) {
     		return;
 	}
