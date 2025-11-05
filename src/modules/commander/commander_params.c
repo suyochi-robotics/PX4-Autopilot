@@ -1068,6 +1068,7 @@ PARAM_DEFINE_FLOAT(OBST_TRIG_DIST, 5.0f);
  * @min 1
  * @max 10
  * @increment 1
+ * @unit s
  */
 PARAM_DEFINE_FLOAT(OBST_CLEAR_TIME, 1.0f);
 
