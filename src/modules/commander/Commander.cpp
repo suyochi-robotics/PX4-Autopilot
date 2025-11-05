@@ -1565,80 +1565,84 @@ void Commander::handleCommandsFromModeExecutors()
 
 void Commander::handleObstacleDetection()
 {
-    distance_sensor_s ds{};
-    bool obstacle_detected = false;
+	if (!_param_obst_en_auto.get()) {
+    		return;
+	}
 
-    // --- Step 1: Read distance sensors ---
-    for (int i = 0; i < _distance_sensor_subs.size(); i++) {
-        if (_distance_sensor_subs[i].updated()) {
-            _distance_sensor_subs[i].copy(&ds);
+    	distance_sensor_s ds{};
+    	bool obstacle_detected = false;
 
-            if (ds.orientation == distance_sensor_s::ROTATION_FORWARD_FACING &&
-                PX4_ISFINITE(ds.current_distance) &&
-                ds.current_distance > 0.2f) {
+    	// --- Step 1: Read distance sensors ---
+    	for (int i = 0; i < _distance_sensor_subs.size(); i++) {
+		if (_distance_sensor_subs[i].updated()) {
+			_distance_sensor_subs[i].copy(&ds);
 
-                // Read trigger distance parameter only when needed
-                const float trigger_distance = _param_obst_trig_dist.get();
+			if (ds.orientation == distance_sensor_s::ROTATION_FORWARD_FACING &&
+				PX4_ISFINITE(ds.current_distance) &&
+				ds.current_distance > 0.2f) {
 
-                if (ds.current_distance < trigger_distance) {
-                    obstacle_detected = true;
-                    break;
-                }
-            }
-        }
-    }
+				// Read trigger distance parameter only when needed
+				const float trigger_distance = _param_obst_trig_dist.get();
 
-    const hrt_abstime now = hrt_absolute_time();
+				if (ds.current_distance < trigger_distance) {
+					obstacle_detected = true;
+					break;
+				}
+			}
+		}
+    	}
 
-    // --- Step 2: Immediate HOLD on detection ---
-    if (obstacle_detected) {
-        _last_obstacle_time = now;
+	const hrt_abstime now = hrt_absolute_time();
 
-        if (!_obstacle_active &&
-            (_vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION ||
-             _vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL)) {
+	// --- Step 2: Immediate HOLD on detection ---
+	if (obstacle_detected) {
+		_last_obstacle_time = now;
 
-            _obstacle_prev_mode = _vehicle_status.nav_state;
-            _obstacle_active = true;
+		if (!_obstacle_active &&
+		(_vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION ||
+		_vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL)) {
 
-            mavlink_log_critical(&_mavlink_log_pub, "⚠️ Obstacle detected! Switching to HOLD");
-            _user_mode_intention.change(
-                vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER,
-                ModeChangeSource::ModeExecutor,
-                false,  // allow_fallback
-                true    // force
-            );
-        }
+			_obstacle_prev_mode = _vehicle_status.nav_state;
+			_obstacle_active = true;
 
-    // --- Step 3: Resume after obstacle clears for configured time ---
-    } else if (_obstacle_active) {
-        const float clear_time_sec = _param_obst_clear_time.get(); // read only when obstacle was active
+			mavlink_log_critical(&_mavlink_log_pub, "⚠️ Obstacle detected! Switching to HOLD");
+			_user_mode_intention.change(
+				vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER,
+				ModeChangeSource::ModeExecutor,
+				false,  // allow_fallback
+				true    // force
+			);
+		}
 
-        if (hrt_elapsed_time(&_last_obstacle_time) > (clear_time_sec * 1_s)) {
+	// --- Step 3: Resume after obstacle clears for configured time ---
+	} else if (_obstacle_active) {
+		const float clear_time_sec = _param_obst_clear_time.get(); // read only when obstacle was active
 
-            if (_obstacle_prev_mode == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
-                mavlink_log_info(&_mavlink_log_pub, "✅ Obstacle cleared, resuming Mission");
-                _user_mode_intention.change(
-                    vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION,
-                    ModeChangeSource::ModeExecutor,
-                    false,
-                    true
-                );
+		if (hrt_elapsed_time(&_last_obstacle_time) > (clear_time_sec * 1_s)) {
 
-            } else if (_obstacle_prev_mode == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL) {
-                mavlink_log_info(&_mavlink_log_pub, "✅ Obstacle cleared, resuming RTL");
-                _user_mode_intention.change(
-                    vehicle_status_s::NAVIGATION_STATE_AUTO_RTL,
-                    ModeChangeSource::ModeExecutor,
-                    false,
-                    true
-                );
-            }
+			if (_obstacle_prev_mode == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
+				mavlink_log_info(&_mavlink_log_pub, "✅ Obstacle cleared, resuming Mission");
+				_user_mode_intention.change(
+					vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION,
+					ModeChangeSource::ModeExecutor,
+					false,
+					true
+				);
 
-            _obstacle_active = false;
-            _obstacle_prev_mode = 0;
-        }
-    }
+			} else if (_obstacle_prev_mode == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL) {
+				mavlink_log_info(&_mavlink_log_pub, "✅ Obstacle cleared, resuming RTL");
+				_user_mode_intention.change(
+					vehicle_status_s::NAVIGATION_STATE_AUTO_RTL,
+					ModeChangeSource::ModeExecutor,
+					false,
+					true
+				);
+			}
+
+			_obstacle_active = false;
+			_obstacle_prev_mode = 0;
+		}
+	}
 }
 
 unsigned Commander::handleCommandActuatorTest(const vehicle_command_s &cmd)

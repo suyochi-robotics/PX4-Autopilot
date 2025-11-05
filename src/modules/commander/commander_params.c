@@ -1060,7 +1060,7 @@ PARAM_DEFINE_INT32(COM_FLTT_LOW_ACT, 3);
 PARAM_DEFINE_FLOAT(OBST_TRIG_DIST, 5.0f);
 
 /**
- * Time to change the mode back to previous mode after clearing the obstacle
+ * Time to change the mode back to previous mode after clearing the obstacle in Auto or RTL
  *
  * System will wait this much time before changing the mode and flying in previous mode
  *
@@ -1070,3 +1070,15 @@ PARAM_DEFINE_FLOAT(OBST_TRIG_DIST, 5.0f);
  * @increment 1
  */
 PARAM_DEFINE_FLOAT(OBST_CLEAR_TIME, 1.0f);
+
+/**
+ * Enable obstacle trigger logic in AUTO modes
+ *
+ * When enabled, the system will automatically switch to HOLD
+ * if an obstacle is detected within OBST_TRIG_DIST.
+ * When disabled, obstacle detection logic is ignored.
+ *
+ * @group Commander
+ * @boolean
+ */
+PARAM_DEFINE_INT32(OBST_EN_AUTO, 1);

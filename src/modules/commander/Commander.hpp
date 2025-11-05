@@ -362,6 +362,7 @@ private:
 		// ------------------------------------------------------------------
 		// 🚧 Custom obstacle prevention parameters (Suyochi Robotics)
 		// ------------------------------------------------------------------
+		(ParamBool<px4::params::OBST_EN_AUTO>)       _param_obst_en_auto,
 		(ParamFloat<px4::params::OBST_TRIG_DIST>)    _param_obst_trig_dist,
 		(ParamFloat<px4::params::OBST_CLEAR_TIME>)   _param_obst_clear_time
 	);
