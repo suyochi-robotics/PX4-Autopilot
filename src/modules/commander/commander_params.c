@@ -1044,3 +1044,29 @@ PARAM_DEFINE_FLOAT(COM_THROW_SPEED, 5);
  * @increment 1
  */
 PARAM_DEFINE_INT32(COM_FLTT_LOW_ACT, 3);
+
+/**
+ * Obstacle Collision Prevention trigger distance
+ *
+ * System will change the mode to HOLD if obstacle is in the distance range
+ *
+ * @group Commander
+ * @min 0.5
+ * @max 10
+ * @decimal 1
+ * @increment 0.1
+ * @unit m
+ */
+PARAM_DEFINE_FLOAT(OBST_TRIG_DIST, 5.0f);
+
+/**
+ * Time to change the mode back to previous mode after clearing the obstacle
+ *
+ * System will wait this much time before changing the mode and flying in previous mode
+ *
+ * @group Commander
+ * @min 1
+ * @max 10
+ * @increment 1
+ */
+PARAM_DEFINE_FLOAT(OBST_CLEAR_TIME, 1.0f);

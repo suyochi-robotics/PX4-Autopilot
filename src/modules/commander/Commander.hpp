@@ -200,6 +200,18 @@ private:
 
 	void modeManagementUpdate();
 
+	/*** Start of Obstacle Collision Preventions Changes***/
+
+	void handleObstacleDetection();
+
+	uORB::SubscriptionMultiArray<distance_sensor_s> _distance_sensor_subs{ORB_ID::distance_sensor};
+
+	bool _obstacle_active{false};
+	uint8_t _obstacle_prev_mode{0};
+	hrt_abstime _last_obstacle_time{0};
+
+	/*** End of Obstacle Collision Preventions ***/
+
 	enum class PrearmedMode {
 		DISABLED = 0,
 		SAFETY_BUTTON = 1,
@@ -346,6 +358,11 @@ private:
 		(ParamInt<px4::params::COM_RC_OVERRIDE>)    _param_com_rc_override,
 		(ParamInt<px4::params::COM_FLIGHT_UUID>)    _param_flight_uuid,
 		(ParamInt<px4::params::COM_TAKEOFF_ACT>)    _param_takeoff_finished_action,
-		(ParamFloat<px4::params::COM_CPU_MAX>)      _param_com_cpu_max
-	)
+		(ParamFloat<px4::params::COM_CPU_MAX>)      _param_com_cpu_max,
+		// ------------------------------------------------------------------
+		// 🚧 Custom obstacle prevention parameters (Suyochi Robotics)
+		// ------------------------------------------------------------------
+		(ParamFloat<px4::params::OBST_TRIG_DIST>)    _param_obst_trig_dist,
+		(ParamFloat<px4::params::OBST_CLEAR_TIME>)   _param_obst_clear_time
+	);
 };
