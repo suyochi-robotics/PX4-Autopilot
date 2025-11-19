@@ -78,6 +78,7 @@ Navigator::Navigator() :
 #if CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF
 	_vtol_takeoff(this),
 #endif //CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF
+	_mission_resume(this),
 	_land(this),
 	_precland(this),
 	_rtl(this)
@@ -91,8 +92,10 @@ Navigator::Navigator() :
 	_navigation_mode_array[5] = &_precland;
 #if CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF
 	_navigation_mode_array[6] = &_vtol_takeoff;
-#endif //CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF
-
+	_navigation_mode_array[7] = &_mission_resume;
+#else
+	_navigation_mode_array[6] = &_mission_resume;
+#endif
 	/* iterate through navigation modes and initialize _mission_item for each */
 	for (unsigned int i = 0; i < NAVIGATOR_MODE_ARRAY_SIZE; i++) {
 		if (_navigation_mode_array[i]) {
@@ -761,12 +764,18 @@ void Navigator::run()
 
 		switch (_vstatus.nav_state) {
 		case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
-			_pos_sp_triplet_published_invalid_once = false;
+		{
+    			mission_resume::ResumeData r{};
 
-			navigation_mode_new = &_mission;
+    			if (mission_resume::load_resume_data(r) && r.valid) {
+        			navigation_mode_new = &_mission_resume;    // RUN RESUME BLOCK
+    			} else {
+				_pos_sp_triplet_published_invalid_once = false;
+        			navigation_mode_new = &_mission;           // NORMAL MISSION
+    			}
 
-			break;
-
+    			break;
+		}
 		case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
 			_pos_sp_triplet_published_invalid_once = false;
 			navigation_mode_new = &_loiter;

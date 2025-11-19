@@ -40,6 +40,7 @@ set(NAVIGATOR_SOURCES
 	mission_base.cpp
 	mission_block.cpp
 	mission.cpp
+	mission_resume.cpp
 	loiter.cpp
 	rtl.cpp
 	rtl_direct.cpp
