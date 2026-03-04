@@ -560,14 +560,7 @@ transition_result_t Commander::arm(arm_disarm_reason_t calling_reason, bool run_
 	}
 
 	if (run_preflight_checks) {
-		if (!_vehicle_control_mode.flag_control_altitude_enabled && !_vehicle_control_mode.flag_control_position_enabled) {
-			mavlink_log_critical(&_mavlink_log_pub, "Arming denied: Not in Altitude/Position mode\t");
-			events::send(events::ID("commander_arm_denied_mode"), {events::Log::Critical, events::LogInternal::Info},
-				"Arming denied: Only Altitude or Position mode allowed");
-			tune_negative(true);
-			return TRANSITION_DENIED;
-		}
-		//if (_vehicle_control_mode.flag_control_manual_enabled) {
+		if (_vehicle_control_mode.flag_control_manual_enabled) {
 
 			if (_vehicle_control_mode.flag_control_climb_rate_enabled &&
 			    !_failsafe_flags.manual_control_signal_lost && _is_throttle_above_center) {
@@ -589,7 +582,6 @@ transition_result_t Commander::arm(arm_disarm_reason_t calling_reason, bool run_
 				tune_negative(true);
 				return TRANSITION_DENIED;
 			}
-		/*
 		} else if (calling_reason == arm_disarm_reason_t::rc_stick
 			   || calling_reason == arm_disarm_reason_t::rc_switch
 			   || calling_reason == arm_disarm_reason_t::rc_button) {
@@ -599,7 +591,7 @@ transition_result_t Commander::arm(arm_disarm_reason_t calling_reason, bool run_
 				     "Arming denied: switch to manual mode first");
 			tune_negative(true);
 			return TRANSITION_DENIED;
-		}*/
+		}
 
 		_health_and_arming_checks.update();
 
@@ -1716,7 +1708,7 @@ void Commander::save_mission_resume_point(uint8_t old_nav_state, uint8_t new_nav
 	param_set_no_notification(param_find("MIS_RSM_LON"), &lon_i);
 	param_set_no_notification(param_find("MIS_RSM_ALT"), &alt_f);
 
-	PX4_INFO("ResumeMission: Saved (idx=%d lat=%.7f lon=%.7f alt=%.2f)",
+	PX4_INFO("ResumeMission: Saved (idx=%" PRId32 " lat=%.7f lon=%.7f alt=%.2f)",
          idx, gpos.lat, gpos.lon, (double)gpos.alt);
 }
 

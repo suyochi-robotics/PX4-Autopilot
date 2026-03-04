@@ -273,12 +273,12 @@ void MissionResume::on_active()
 	}
 
 	if (static_cast<uint32_t>(_r.mission_id) != mr->mission_id) {
-		PX4_WARN("MissionResume: mission id changed (%u != %u)", static_cast<uint32_t>(_r.mission_id), mr->mission_id);
+		PX4_WARN("MissionResume: mission id changed (%" PRIu32 " != %" PRIu32 ")", static_cast<uint32_t>(_r.mission_id), mr->mission_id);
 		return;
 	}
 
 	if (static_cast<uint32_t>(_r.index) >= mr->seq_total) {
-		PX4_WARN("MissionResume: resume index %d >= seq_total %u", _r.index, mr->seq_total);
+		PX4_WARN("MissionResume: resume index %" PRId32 " >= seq_total %" PRIu32, _r.index, static_cast<uint32_t>(mr->seq_total));
 		return;
 	}
 
