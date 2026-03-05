@@ -507,6 +507,12 @@ else
 		px4flow start -X &
 	fi
 
+	# Spray System driver
+	if param greater -s SPRAY_SYSTEM_EN 0
+	then
+		spray_system start
+	fi
+
 	# Payload deliverer module if gripper is enabled
 	if param compare -s PD_GRIPPER_EN 1
 	then

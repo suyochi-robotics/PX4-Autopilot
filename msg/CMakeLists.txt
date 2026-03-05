@@ -188,6 +188,7 @@ set(msg_files
 	SensorCombined.msg
 	SensorCorrection.msg
 	SensorFlowSensor.msg
+	SpraySystemStatus.msg
 	SensorGnssRelative.msg
 	SensorGps.msg
 	SensorGyro.msg

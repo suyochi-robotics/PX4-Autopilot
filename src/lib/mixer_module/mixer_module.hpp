@@ -46,6 +46,7 @@
 #include "functions/FunctionMotors.hpp"
 #include "functions/FunctionParachute.hpp"
 #include "functions/FunctionServos.hpp"
+#include "functions/FunctionSpraySystem.hpp"
 
 #include <board_config.h>
 #include <drivers/drv_pwm_output.h>
