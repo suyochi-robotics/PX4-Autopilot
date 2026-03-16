@@ -1,0 +1,5 @@
+menuconfig MODULES_SPRAY_SYSTEM
+	bool "spray_system"
+	default n
+	---help---
+		Enable support for spray system

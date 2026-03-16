@@ -20,6 +20,9 @@ functions:
     Landing_Gear: 400
     Parachute: 401
 
+    Spray_Pump: 501
+    Centrifugal_Nozzles: 502
+
     # Manual RC input (passthrough)
     RC_Roll: 402
     RC_Pitch: 403
