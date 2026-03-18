@@ -89,6 +89,7 @@ set(msg_files
 	FailsafeFlags.msg
 	FailureDetectorStatus.msg
 	FlightPhaseEstimation.msg
+	SensorFlowSensor.msg
 	FollowTarget.msg
 	FollowTargetEstimator.msg
 	FollowTargetStatus.msg
