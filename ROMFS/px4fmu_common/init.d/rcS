@@ -459,6 +459,11 @@ else
 			camera_capture on
 		fi
 	fi
+	# FLOW capture driver
+	if param greater -s FLOW_CAP_ENABLE 0
+	then
+		flow_sensor start
+	fi
 
 	#
 	# Commander

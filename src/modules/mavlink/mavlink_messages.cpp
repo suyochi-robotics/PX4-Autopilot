@@ -76,6 +76,7 @@
 #include "streams/EXTENDED_SYS_STATE.hpp"
 #include "streams/FLIGHT_INFORMATION.hpp"
 #include "streams/GLOBAL_POSITION_SENSOR.hpp"
+#include "streams/FLOW_SENSOR_MAV.hpp"
 #include "streams/GLOBAL_POSITION_INT.hpp"
 #if defined(MAVLINK_MSG_ID_GNSS_INTEGRITY)
 #include "streams/GNSS_INTEGRITY.hpp"
@@ -520,6 +521,9 @@ static const StreamListItem streams_list[] = {
 #if defined(GLOBAL_POSITION_SENSOR_HPP)
 	create_stream_list_item<MavlinkStreamGlobalPositionSensor>(),
 #endif // GLOBAL_POSITION_SENSOR_HPP
+#if defined(FLOW_SENSOR_MAV_HPP)
+	create_stream_list_item<MavlinkStreamFlowSensor>(),
+#endif //FLOW_SENSOR_MAV_HPP
 };
 
 const char *get_stream_name(const uint16_t msg_id)
