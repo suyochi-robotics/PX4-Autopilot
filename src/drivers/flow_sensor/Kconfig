@@ -1,0 +1,5 @@
+menuconfig DRIVERS_FLOW_SENSOR
+	bool "flow_sensor"
+	default n
+	---help---
+		Enable support for flow sensor
