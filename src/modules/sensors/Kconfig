@@ -1,3 +1,4 @@
+rsource "*/Kconfig"
 menuconfig MODULES_SENSORS
 	bool "sensors"
 	default n
