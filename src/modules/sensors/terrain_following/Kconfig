@@ -1,0 +1,5 @@
+menuconfig SENSORS_TERRAIN_FOLLOWING
+    bool "Terrain following"
+    default y
+    ---help---
+      Enables the terrain_following module for terrain following.

@@ -1,0 +1,5 @@
+menuconfig SENSORS_BW_OBSTACLE_AVOIDANCE
+    bool "backward obstcle avoidance"
+    default y
+    ---help---
+      Enables the bw_obstcle_avoidance module for backward obstacle avoidance.

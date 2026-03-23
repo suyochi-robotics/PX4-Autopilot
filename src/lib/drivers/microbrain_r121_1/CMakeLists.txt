@@ -1,6 +1,6 @@
-############################################################################
+# ****************************************************************************
 #
-#   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2024 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,20 +29,17 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
-############################################################################
+# ****************************************************************************
 
-add_subdirectory(accelerometer)
-add_subdirectory(device)
-add_subdirectory(gyroscope)
-add_subdirectory(led)
-add_subdirectory(magnetometer)
-add_subdirectory(rangefinder)
+# ********************************************************************************************************
+px4_add_library(
+	drivers_microbrain_r121_1
+	Microbrain_R121_1.hpp
+	Microbrain_R121_1.cpp
+	)
 
-add_subdirectory(smbus)
-add_subdirectory(smbus_sbs)
-add_subdirectory(microbrain_h201_1)
-add_subdirectory(microbrain_r121_1)
+target_link_libraries(drivers_microbrain_r121_1
+	PRIVATE
+		drivers_rangefinder
 
-if (${PX4_PLATFORM} STREQUAL "nuttx")
-	add_subdirectory(mcp_common)
-endif()
+)
