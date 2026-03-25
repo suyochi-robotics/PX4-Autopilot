@@ -1,0 +1,5 @@
+menuconfig SENSORS_FW_OBSTACLE_AVOIDANCE
+    bool "Forward obstacle avoidance"
+    default y
+    ---help---
+      Enables the fw_avoidance_avoidance module for front obstacle avoidance.
