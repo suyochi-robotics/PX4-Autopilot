@@ -952,7 +952,7 @@ Commander::handle_command(const vehicle_command_s &cmd)
 			}
 
 			if (desired_nav_state != vehicle_status_s::NAVIGATION_STATE_MAX) {
-
+				uint8_t old_nav_state = _vehicle_status.nav_state;
 				// Special handling for LAND mode: always allow to switch into it such that if used
 				// as emergency mode it is always available. When triggering it the user generally wants
 				// the vehicle to descend immediately, and if that means to switch to DESCEND it is fine.
@@ -961,6 +961,16 @@ Commander::handle_command(const vehicle_command_s &cmd)
 
 				if (_user_mode_intention.change(desired_nav_state, getSourceFromCommand(cmd), false, force)) {
 					main_ret = TRANSITION_CHANGED;
+
+					// Save resume only if:
+					// 1. We were in AUTO.MISSION
+					// 2. We are REQUESTING a different mode
+					// 3. The transition result is TRANSITION_CHANGED
+					if (old_nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION &&
+					    desired_nav_state != vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
+
+						save_mission_resume_point(old_nav_state, desired_nav_state);
+					}
 
 				} else {
 					if (cmd.from_external && cmd.source_component == 190) { // MAV_COMP_ID_MISSIONPLANNER
@@ -1662,6 +1672,67 @@ void Commander::handleCommandsFromModeExecutors()
 			}
 		}
 	}
+}
+void Commander::save_mission_resume_point(uint8_t old_nav_state, uint8_t new_nav_state)
+{
+	// Save only when LEAVING AUTO.MISSION
+	if (old_nav_state != vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
+		return;
+	}
+
+	if (new_nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
+		return;
+	}
+
+	// ---- Load mission_result ----
+	mission_result_s mr{};
+
+	if (!_mission_result_sub.copy(&mr)) {
+		PX4_WARN("ResumeMission: mission_result not available");
+		return;
+	}
+
+	if (!mr.valid || mr.seq_total == 0) {
+		PX4_WARN("ResumeMission: mission invalid, not saving");
+		return;
+	}
+
+	if (mr.seq_current >= mr.seq_total) {
+		PX4_WARN("ResumeMission: mission ended, not saving");
+		return;
+	}
+
+	// ---- Load global position ----
+	vehicle_global_position_s gpos{};
+
+	if (!_vehicle_global_position_sub.copy(&gpos)) {
+		PX4_WARN("ResumeMission: global position not available");
+		return;
+	}
+
+	if (!PX4_ISFINITE(gpos.lat) || !PX4_ISFINITE(gpos.lon)) {
+		PX4_WARN("ResumeMission: invalid global position, not saving");
+		return;
+	}
+
+	// ---- Convert + Save params ----
+	int32_t valid = 1;
+	int32_t mid = mr.mission_id;
+	int32_t idx = mr.seq_current;
+
+	int32_t lat_i = (int32_t)(gpos.lat * 1e7);
+	int32_t lon_i = (int32_t)(gpos.lon * 1e7);
+	float alt_f   = gpos.alt;
+
+	param_set_no_notification(param_find("MIS_RSM_VALID"), &valid);
+	param_set_no_notification(param_find("MIS_RSM_MID"), &mid);
+	param_set_no_notification(param_find("MIS_RSM_IDX"), &idx);
+	param_set_no_notification(param_find("MIS_RSM_LAT"), &lat_i);
+	param_set_no_notification(param_find("MIS_RSM_LON"), &lon_i);
+	param_set_no_notification(param_find("MIS_RSM_ALT"), &alt_f);
+
+	PX4_INFO("ResumeMission: Saved (idx=%" PRId32 " lat=%.7f lon=%.7f alt=%.2f)",
+		 idx, gpos.lat, gpos.lon, (double)gpos.alt);
 }
 
 unsigned Commander::handleCommandActuatorTest(const vehicle_command_s &cmd)
