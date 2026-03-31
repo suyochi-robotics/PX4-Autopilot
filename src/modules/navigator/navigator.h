@@ -46,6 +46,7 @@
 #include "precland.h"
 #include "loiter.h"
 #include "mission.h"
+#include "mission_resume.hpp"
 #include "navigator_mode.h"
 #include "rtl.h"
 #include "takeoff.h"
@@ -365,7 +366,8 @@ private:
 #if CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF
 	VtolTakeoff	_vtol_takeoff;			/**< class for handling VEHICLE_CMD_NAV_VTOL_TAKEOFF command */
 #endif //CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF
-	Land		_land;			/**< class for handling land commands */
+	MissionResume   _mission_resume;                /**< class for handling MISSION RESUME if required */
+	Land		_land;			 	/**< class for handling land commands */
 	PrecLand	_precland;			/**< class for handling precision land commands */
 	RTL 		_rtl;				/**< class that handles RTL */
 #if CONFIG_NAVIGATOR_ADSB

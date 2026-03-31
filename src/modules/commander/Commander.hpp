@@ -199,6 +199,8 @@ private:
 
 	void modeManagementUpdate();
 
+	void save_mission_resume_point(uint8_t old_nav_state, uint8_t new_nav_state);
+
 	static void onFailsafeNotifyUserTrampoline(void *arg);
 	void onFailsafeNotifyUser();
 
@@ -309,6 +311,7 @@ private:
 	uORB::Subscription					_vehicle_command_mode_executor_sub{ORB_ID(vehicle_command_mode_executor)};
 	uORB::Subscription					_vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};
 	uORB::Subscription					_vtol_vehicle_status_sub{ORB_ID(vtol_vehicle_status)};
+	uORB::Subscription 					_vehicle_global_position_sub{ORB_ID(vehicle_global_position)};
 
 	uORB::SubscriptionInterval				_parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
