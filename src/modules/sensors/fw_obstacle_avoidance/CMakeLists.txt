@@ -1,6 +1,6 @@
-############################################################################
+# ****************************************************************************
 #
-#   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2024 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,15 +29,18 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
-############################################################################
+# ****************************************************************************
 
-add_subdirectory(accelerometer)
-add_subdirectory(device)
-add_subdirectory(gyroscope)
-add_subdirectory(led)
-add_subdirectory(magnetometer)
-add_subdirectory(rangefinder)
-add_subdirectory(smbus)
-add_subdirectory(smbus_sbs)
-add_subdirectory(microbrain_h201_1)
-add_subdirectory(microbrain_r121_1)
+# ********************************************************************************************************
+
+message( STATUS "building sensors__fw_obstacle_avoidance")
+px4_add_module(
+    MODULE sensors__fw_obstacle_avoidance
+	MAIN fw_obstacle_avoidance
+	SRCS
+		FwObstacleAvoidance.cpp
+	MODULE_CONFIG
+		module.yaml
+	DEPENDS
+		drivers_microbrain_r121_1
+	)
