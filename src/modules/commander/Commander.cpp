@@ -1693,7 +1693,7 @@ void Commander::handleObstacleDetection()
 			_user_mode_intention.change(
 				vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER,
 				ModeChangeSource::ModeExecutor,
-				false,  // allow_fallback
+				true,  // allow_fallback
 				true    // force
 			);
 		}
