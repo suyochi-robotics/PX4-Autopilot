@@ -78,7 +78,7 @@
 [submodule "src/modules/mavlink/mavlink"]
 	path = src/modules/mavlink/mavlink
 	url = https://github.com/suyochi-robotics/mavlink.git
-	branch = suyochi-dev-mavlink
+	branch = suyochi-dev-master
 [submodule "src/drivers/actuators/vertiq_io/iq-module-communication-cpp"]
 	path = src/drivers/actuators/vertiq_io/iq-module-communication-cpp
 	url = https://github.com/PX4/iq-module-communication-cpp.git
