@@ -1,0 +1,19 @@
+module_name: flow_sensor
+parameters:
+- group: Sensors
+  definitions:
+    FLOW_CAP_ENABLE:
+      description:
+        short: To Enable Flow Sensor
+        long: To Enable Flow Sensor
+      type: boolean
+      default: false
+      reboot_required: true
+    FLOW_CAL_FACTOR:
+      description:
+        short: Flow calculation multiplier
+        long: Flow calculation multiplier
+      type: float
+      decimal: 1
+      default: 7.5
+      reboot_required: true

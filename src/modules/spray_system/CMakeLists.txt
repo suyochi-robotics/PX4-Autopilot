@@ -39,6 +39,8 @@ px4_add_module(
 	SRCS
 		SPRAY_SYSTEM.cpp
 		spray_system_main.cpp
+	MODULE_CONFIG
+		spray_system_params.yaml
 	DEPENDS
 		uORB
 		px4_work_queue

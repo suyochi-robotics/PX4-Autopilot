@@ -80,4 +80,12 @@ private:
 	uORB::PublicationMulti<sensor_flow_sensor_s> _flow_pub{ORB_ID(sensor_flow_sensor)};
 
 	static int gpio_interrupt_callback(int irq, void *context, void *arg);
+
+	float _flow_cal_factor{7.5f};
+	bool _flow_enabled{false};
+
+	DEFINE_PARAMETERS(
+		(ParamFloat<px4::params::FLOW_CAL_FACTOR>)  _param_flow_cal_factor,
+		(ParamBool<px4::params::FLOW_CAP_ENABLE>)   _param_flow_cap_enable
+	)
 };

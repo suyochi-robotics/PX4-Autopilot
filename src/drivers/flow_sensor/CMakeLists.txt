@@ -42,6 +42,8 @@ px4_add_module(
 	SRCS
 		FLOW_SENSOR.cpp
 		flow_sensor_main.cpp
+	MODULE_CONFIG
+		flow_sensor_parameters.yaml
 	DEPENDS
 		uORB
 		arch_io_pins

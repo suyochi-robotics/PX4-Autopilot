@@ -1,0 +1,32 @@
+module_name: spray_system
+parameters:
+- group: Spray System
+  definitions:
+    SPRAY_PUMP_LPM:
+      description:
+        short: Spray pump capacity in liters per minute
+        long: Spray pump capacity in liters per minute
+      type: float
+      default: 5.0
+      min: 3.0
+      max: 8.0
+    SPRAY_CENT_RPM:
+      description:
+        short: Centrifugal spray system speed in RPM
+        long: Centrifugal spray system speed in RPM
+      type: float
+      default: 10000.0
+      min: 1000.0
+      max: 20000.0
+    SPRAY_EN_MODE:
+      description:
+        short: Spray enable mode
+        long: |-
+          Spray enable mode
+          1 = Always ON
+          2 = ON when vehicle armed
+          3 = ON during AUTO mission
+      type: int32
+      default: 3
+      min: 1
+      max: 3

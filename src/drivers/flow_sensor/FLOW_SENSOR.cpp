@@ -42,7 +42,6 @@ FlowSensor::FlowSensor() :
 	ModuleParams(nullptr)
 {
 	_flow_pub.advertise();
-	ScheduleNow();
 
 }
 
@@ -68,10 +67,11 @@ bool FlowSensor::init()
 		int32_t function;
 
 		if (function_handle != PARAM_INVALID && param_get(function_handle, &function) == 0) {
-			// PX4_INFO(" param : %s, value: %ld", param_name, function);
-			if (function == 2071) { // FlowSensor input function id
+			PX4_INFO(" param : %s, value: %ld", param_name, function);
+
+			if (function == 2071) {
 				_channel = i;
-				break; // Exit loop once we find the channel
+				break;
 			}
 		}
 	}
@@ -89,6 +89,17 @@ bool FlowSensor::init()
 		return false;
 	}
 
+	_flow_cal_factor = _param_flow_cal_factor.get();
+	_flow_enabled = _param_flow_cap_enable.get();
+
+	PX4_INFO("Flow Cal Factor: %.2f", (double)_flow_cal_factor);
+	PX4_INFO("Flow Enabled: %s", _flow_enabled ? "true" : "false");
+
+	if (!_flow_enabled) {
+		PX4_WARN("Flow sensor disabled");
+		return false;
+	}
+
 	_flow_gpio = PX4_MAKE_GPIO_EXTI(io_timer_channel_get_as_pwm_input(_channel));
 	int ret_val = px4_arch_gpiosetevent(_flow_gpio, false, true, true, &FlowSensor::gpio_interrupt_callback, this);
 
@@ -98,31 +109,16 @@ bool FlowSensor::init()
 
 	_last_publish_time = hrt_absolute_time();
 
+
+	if (success) {
+		ScheduleNow();
+	}
+
 	return success;
 }
 
 void FlowSensor::Run()
 {
-	// Default calibration factor
-	param_t flow_cal_handle = param_find("FLOW_CAL_FACTOR");
-	// if(flow_cal_handle == PARAM_INVALID) {
-	// 	PX4_ERR("FLOW_CAL_FACTOR parameter not found");
-	// 	return;
-	// }
-
-	float param_cal_factor = 0.0f;
-	param_get(flow_cal_handle, &param_cal_factor);
-	int ret = param_set(flow_cal_handle, &param_cal_factor);
-
-	if (ret != PX4_OK) {
-		PX4_ERR("Failed to set FLOW_CAL_FACTOR parameter");
-		return;
-	}
-
-	// else if(ret == PX4_OK) {
-	// 	PX4_ERR("Flow Calib factor is  %.2f", (double)param_calib_factor);
-
-	// }
 
 	if (should_exit()) {
 		exit_and_cleanup(desc);
@@ -133,25 +129,25 @@ void FlowSensor::Run()
 	hrt_abstime now = hrt_absolute_time();
 
 	if ((now - _last_publish_time) >= INTERVAL) {
-		count = _pulse_count;
-		_pulse_count.store(0); // Reset after counting
+		uint32_t pulse_count = _pulse_count.load();
+		_pulse_count.store(0);
 
-		if (param_cal_factor <= 0.0f) {
-			// PX4_ERR("Calibration factor is zero or -ve, cannot calculate flow rate");
+		if (_flow_cal_factor <= 0.0f) {
+			PX4_ERR("Invalid calibration factor");
 			return;
 		}
 
-		float flow_rate_lpm = (static_cast<float>(count.load())) / param_cal_factor;
+		float flow_rate_lpm = (static_cast<float>(pulse_count)) / _flow_cal_factor;
 
 		sensor_flow_sensor_s flow_msg{};
 		flow_msg.timestamp = now;
 		flow_msg.flow_rate_lpm = flow_rate_lpm;
-		flow_msg.cal_factor = param_cal_factor;
-		flow_msg.pulse_count = count.load();
+		flow_msg.cal_factor = _flow_cal_factor;
+		flow_msg.pulse_count = pulse_count;
 		_flow_pub.publish(flow_msg);
 
-		PX4_INFO("Flow rate: %.2f L/min (%ld pulses)", (double)flow_rate_lpm, count.load());
-		_last_publish_time = hrt_absolute_time();
+		PX4_DEBUG("Flow rate: %.2f L/min (%lu pulses)", (double)flow_rate_lpm, pulse_count);
+		_last_publish_time = now;
 	}
 
 	ScheduleDelayed(INTERVAL);
@@ -160,7 +156,7 @@ void FlowSensor::Run()
 int FlowSensor::gpio_interrupt_callback(int irq, void *context, void *arg)
 {
 	FlowSensor *instance = static_cast<FlowSensor *>(arg);
-	// Increment pulse count atomically
+	PX4_DEBUG("IRQ Triggered");
 	instance->_pulse_count.fetch_add(1);
 
 	return PX4_OK;

@@ -82,6 +82,7 @@ private:
 	int32_t _spray_mode{0};
 
 	void Run() override;
+
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::SPRAY_PUMP_LPM>) _pump_lpm,
 		(ParamFloat<px4::params::SPRAY_CENT_RPM>) _cent_rpm,
