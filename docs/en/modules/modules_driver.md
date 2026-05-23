@@ -191,28 +191,13 @@ Source: [drivers/dshot](https://github.com/PX4/PX4-Autopilot/tree/main/src/drive
 
 ### Description
 
-This is the DShot output driver. It is similar to the fmu driver, and can be used as drop-in replacement
+This is the DShot output driver. It can be used as drop-in replacement
 to use DShot as ESC communication protocol instead of PWM.
-
-On startup, the module tries to occupy all available pins for DShot output.
-It skips all pins already in use (e.g. by a camera trigger module).
 
 It supports:
 
 - DShot150, DShot300, DShot600
 - telemetry via separate UART and publishing as esc_status message
-- sending DShot commands via CLI
-
-### Examples
-
-Permanently reverse motor 1:
-
-```
-dshot reverse -m 1
-dshot save -m 1
-```
-
-After saving, the reversed direction will be regarded as the normal one. So to reverse again repeat the same commands.
 
 ### Usage {#dshot_usage}
 
@@ -225,36 +210,6 @@ dshot <command> [arguments...]
      -d <val>    UART device
                  values: <device>
      [-x]        Swap RX/TX pins
-
-   reverse       Reverse motor direction
-     [-m <val>]  Motor index (1-based, default=all)
-
-   normal        Normal motor direction
-     [-m <val>]  Motor index (1-based, default=all)
-
-   save          Save current settings
-     [-m <val>]  Motor index (1-based, default=all)
-
-   3d_on         Enable 3D mode
-     [-m <val>]  Motor index (1-based, default=all)
-
-   3d_off        Disable 3D mode
-     [-m <val>]  Motor index (1-based, default=all)
-
-   beep1         Send Beep pattern 1
-     [-m <val>]  Motor index (1-based, default=all)
-
-   beep2         Send Beep pattern 2
-     [-m <val>]  Motor index (1-based, default=all)
-
-   beep3         Send Beep pattern 3
-     [-m <val>]  Motor index (1-based, default=all)
-
-   beep4         Send Beep pattern 4
-     [-m <val>]  Motor index (1-based, default=all)
-
-   beep5         Send Beep pattern 5
-     [-m <val>]  Motor index (1-based, default=all)
 
    stop
 
@@ -471,6 +426,35 @@ gz_bridge <command> [arguments...]
    start
      [-w <val>]  World name
      -n <val>    Model name
+
+   stop
+
+   status        print status info
+```
+
+## hiwonder_emm
+
+Source: [drivers/hiwonder_emm](https://github.com/PX4/PX4-Autopilot/tree/main/src/drivers/hiwonder_emm)
+
+### Description
+
+I2C driver for the Hiwonder 4-Channel Encoder Motor Module (EMM), a small motor controller that drives up to
+four brushed DC motors with on-board encoder feedback. Communicates with the EMM on the first external I2C
+bus at address 0x34.
+
+To use this driver, the board configuration must include `CONFIG_DRIVERS_HIWONDER_EMM=y` so the driver is
+compiled into the firmware. At runtime, the driver is enabled by setting the `HIWONDER_EMM_EN` parameter to
+`1` and reboot. It is then started automatically by the rover startup script (`rc.rover`) for ackermann, differential,
+and mecanum rover airframes.
+
+The command to start this driver manually is: `$ hiwonder_emm start`
+
+### Usage {#hiwonder_emm_usage}
+
+```
+hiwonder_emm <command> [arguments...]
+ Commands:
+   start         Start the task
 
    stop
 
@@ -827,7 +811,7 @@ msp_osd <command> [arguments...]
    channel       Change VTX channel
 ```
 
-## newpixel
+## neopixel
 
 Source: [drivers/lights/neopixel](https://github.com/PX4/PX4-Autopilot/tree/main/src/drivers/lights/neopixel)
 
@@ -845,10 +829,10 @@ neopixel -n 8
 
 To drive all available leds.
 
-### Usage {#newpixel_usage}
+### Usage {#neopixel_usage}
 
 ```
-newpixel <command> [arguments...]
+neopixel <command> [arguments...]
  Commands:
    stop
 
