@@ -117,4 +117,7 @@ px4_add_romfs_files(
 	71002_gz_spacecraft_2d
 
 	# [22000, 22999] Reserve for custom models
+	22555_gz_sr20
+	22556_gz_sr04
+	22557_gz_sr08
 )
