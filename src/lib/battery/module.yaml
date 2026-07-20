@@ -178,3 +178,41 @@ parameters:
             decimal: 2
             increment: 0.1
             default: 15
+
+        BAT_V_FS_EN:
+            description:
+                short: Enable battery voltage failsafe
+            type: enum
+            values:
+                0: Disabled
+                1: Enabled
+            default: 1
+
+        BAT_V_FS_THR:
+            description:
+                short: Battery voltage failsafe threshold.
+                long: |
+                    Defines the filtered per-cell voltage threshold used for the
+                    voltage-based battery failsafe.
+            type: float
+            unit: V
+            min: 2.5
+            max: 4.3
+            decimal: 2
+            increment: 0.01
+            default: 3.60
+
+        BAT_V_FS_DELAY:
+            description:
+                short: Battery voltage failsafe delay.
+                long: |
+                    Defines how long the filtered per-cell voltage must remain
+                    below the configured threshold before the voltage-based
+                    battery failsafe is triggered.
+            type: float
+            unit: s
+            min: 0
+            max: 30
+            decimal: 1
+            increment: 0.5
+            default: 10.0

@@ -93,6 +93,10 @@ Battery::Battery(int index, ModuleParams *parent, const int sample_interval_us, 
 
 	_param_handles.bat_avrg_current = param_find("BAT_AVRG_CURRENT");
 
+	_param_handles.v_fs_en    = param_find("BAT_V_FS_EN");
+	_param_handles.v_fs_thr   = param_find("BAT_V_FS_THR");
+	_param_handles.v_fs_delay = param_find("BAT_V_FS_DELAY");
+
 	updateParams();
 }
 
@@ -140,7 +144,9 @@ void Battery::updateBatteryStatus(const hrt_abstime &timestamp)
 	computeScale();
 
 	if (_connected && _battery_initialized) {
-		_warning = determineWarning(_state_of_charge);
+		const uint8_t soc_warning = determineWarning(_state_of_charge);
+		const uint8_t voltage_warning = determineVoltageWarning(timestamp);
+		_warning = math::max(soc_warning, voltage_warning);
 	}
 }
 
@@ -320,6 +326,41 @@ uint8_t Battery::determineWarning(float state_of_charge)
 	}
 }
 
+uint8_t Battery::determineVoltageWarning(const hrt_abstime &timestamp)
+{
+	// Voltage-based failsafe disabled, battery not connected or invalid cell count
+	if ((_params.v_fs_en == 0) || !_connected || (_params.n_cells <= 0)) {
+		_voltage_fs_timer_running = false;
+		_voltage_fs_start = 0;
+		return battery_status_s::WARNING_NONE;
+	}
+
+	// Calculate measured per-cell voltage
+	const float cell_voltage = _voltage_v / _params.n_cells;
+
+	if (cell_voltage <= _params.v_fs_thr) {
+
+		// Start timer only once
+		if (!_voltage_fs_timer_running) {
+			_voltage_fs_timer_running = true;
+			_voltage_fs_start = timestamp;
+		}
+
+		// Trigger warning if voltage remains below threshold for configured delay
+		if ((timestamp - _voltage_fs_start) >= static_cast<hrt_abstime>(_params.v_fs_delay * 1_s)) {
+			return battery_status_s::WARNING_CRITICAL;
+		}
+
+	} else {
+
+		// Voltage recovered, reset timer
+		_voltage_fs_timer_running = false;
+		_voltage_fs_start = 0;
+	}
+
+	return battery_status_s::WARNING_NONE;
+}
+
 uint16_t Battery::determineFaults()
 {
 	uint16_t faults{0};
@@ -404,6 +445,10 @@ void Battery::updateParams()
 	param_get(_param_handles.crit_thr, &_params.crit_thr);
 	param_get(_param_handles.emergen_thr, &_params.emergen_thr);
 	param_get(_param_handles.bat_avrg_current, &_params.bat_avrg_current);
+
+	param_get(_param_handles.v_fs_en, &_params.v_fs_en);
+	param_get(_param_handles.v_fs_thr, &_params.v_fs_thr);
+	param_get(_param_handles.v_fs_delay, &_params.v_fs_delay);
 
 	if (n_cells != _params.n_cells) {
 		_internal_resistance_initialized = false;
