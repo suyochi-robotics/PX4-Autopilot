@@ -124,6 +124,11 @@ protected:
 		param_t emergen_thr;
 		param_t source;
 		param_t bat_avrg_current;
+
+		// Suyochi Params
+		param_t v_fs_en;
+		param_t v_fs_thr;
+		param_t v_fs_delay;
 	} _param_handles{};
 
 	struct {
@@ -137,6 +142,11 @@ protected:
 		float emergen_thr;
 		int32_t source;
 		float bat_avrg_current;
+
+		// Suyochi Params
+		int32_t v_fs_en;
+		float v_fs_thr;
+		float v_fs_delay;
 	} _params{};
 
 	const int _index;
@@ -152,10 +162,15 @@ private:
 	uint16_t determineFaults();
 	void computeScale();
 	float computeRemainingTime(float current_a);
+	uint8_t determineVoltageWarning(const hrt_abstime &timestamp);
 
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 	uORB::SubscriptionData<flight_phase_estimation_s> _flight_phase_estimation_sub{ORB_ID(flight_phase_estimation)};
 	uORB::PublicationMulti<battery_status_s> _battery_status_pub{ORB_ID(battery_status)};
+
+	// Suyochi Params
+	hrt_abstime _voltage_fs_start{0};
+	bool _voltage_fs_timer_running{false};
 
 	bool _external_state_of_charge{false}; ///< inticates that the soc is injected and not updated by this library
 
