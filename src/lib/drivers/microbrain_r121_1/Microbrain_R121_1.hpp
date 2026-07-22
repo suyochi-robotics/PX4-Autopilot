@@ -48,7 +48,7 @@
 #include <math.h>
 #include <fcntl.h>
 #include <px4_log.h>
-#include <poll.h>
+#include <sys/ioctl.h>
 
 
 #include <px4_platform_common/px4_config.h>
@@ -80,6 +80,9 @@ private:
 	void Run() override;
 	int open_port();
 	int collect();
+	bool parse_byte(uint8_t byte, float &distance_m);
+	bool parse_frame(float &distance_m);
+	bool is_valid_distance(float distance_m) const;
 
 	void start();
 	void stop();
@@ -94,12 +97,30 @@ private:
 	float_t _v_fov;
 
 
-	static constexpr int kCONVERSIONINTERVAL{9_ms};
+	enum class ParseState : uint8_t {
+		WaitHeader1,
+		WaitHeader2,
+		ReadFrame
+	};
 
+	static constexpr uint8_t kFrameHeader1{0x54};
+	static constexpr uint8_t kFrameHeader2{0x48};
+	static constexpr uint8_t kFrameMarker{0x4D};
+	static constexpr size_t kFrameSize{20};
+	static constexpr size_t kCrcIndex{19};
+	static constexpr size_t kMarkerIndex{18};
+	static constexpr size_t kDistanceMsbIndex{2};
+	static constexpr size_t kDistanceLsbIndex{3};
+	static constexpr int kSampleInterval{40_ms};
+	static constexpr int kNoDataTimeout{200_ms};
+	static constexpr size_t kReadBufferSize{64};
 
 	int _fd{-1};
 
 	hrt_abstime _last_read{0};
+	ParseState _parse_state{ParseState::WaitHeader1};
+	uint8_t _frame[kFrameSize] {};
+	size_t _frame_index{0};
 
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};
 	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": read")};
