@@ -37,16 +37,14 @@
 /******************************************************************************************************** */
 #include "Microbrain_H201_1.hpp"
 
+#include <cerrno>
 
 Microbrain_H201_1::Microbrain_H201_1(const char *module_name, const char *port, uint8_t rotation, float_t min_range,
 				     float_t max_range,
 				     float_t h_fov, float_t v_fov): ScheduledWorkItem(module_name, px4::serial_port_to_wq(port)),
 	_px4_rangefinder(0, rotation), _fd(-1)
 {
-
-	// store port name
 	strncpy(_port, port, sizeof(_port) - 1);
-	// enforce null termination
 	_port[sizeof(_port) - 1] = '\0';
 
 	_rotation = rotation;
@@ -55,13 +53,12 @@ Microbrain_H201_1::Microbrain_H201_1(const char *module_name, const char *port, 
 	_h_fov = h_fov;
 	_v_fov = v_fov;
 
-
-	device::Device::DeviceId device_id;
+	device::Device::DeviceId device_id{};
 
 	device_id.devid_s.devtype = 0xF0;
 	device_id.devid_s.bus_type = device::Device::DeviceBusType_SERIAL;
 
-	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]); // Assuming '/dev/uart_configSx'
+	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]); // Assuming '/dev/ttySx'
 
 	if (bus_num < 10) {
 		device_id.devid_s.bus = bus_num;
@@ -81,21 +78,22 @@ Microbrain_H201_1::~Microbrain_H201_1()
 {
 	stop();
 
+	if (_fd >= 0) {
+		::close(_fd);
+		_fd = -1;
+	}
+
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
 }
 
 int Microbrain_H201_1::init()
 {
-	int ret = open_port();
+	const int ret = open_port();
 
 	if (ret == PX4_OK) {
 		start();
 	}
-
-	// close the fd
-	::close(_fd);
-	_fd = -1;
 
 	return ret;
 }
@@ -103,68 +101,65 @@ int Microbrain_H201_1::init()
 int
 Microbrain_H201_1::open_port()
 {
+	if (_fd >= 0) {
+		return PX4_OK;
+	}
+
+	_fd = ::open(_port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+
+	if (_fd < 0) {
+		PX4_ERR("Error opening port %s", _port);
+		return PX4_ERROR;
+	}
+
 	int ret = PX4_OK;
+	termios uart_config{};
+	int termios_state{};
 
 	do {
-		// open fd
-		_fd = ::open(_port, O_RDWR | O_NOCTTY);
-		_fds.fd = _fd;
-		_fds.events = POLLIN;
-
-
-		if (_fd < 0) {
-			PX4_ERR("Error opening fd");
-			PX4_ERR("port %s", _port);
-			return -1;
-		}
-
-		unsigned speed = B115200;
-		termios uart_config{};
-		int termios_state{};
-
-		tcgetattr(_fd, &uart_config);
-
-		// clear ONLCR flag (which appends a CR for every LF)
-		uart_config.c_oflag &= ~ONLCR;
-
-		// set baud rate
-		if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
-			PX4_ERR("CFG: %d ISPD", termios_state);
-			ret = -1;
+		if (tcgetattr(_fd, &uart_config) < 0) {
+			PX4_ERR("tcgetattr failed: %d", errno);
+			ret = PX4_ERROR;
 			break;
 		}
 
-		if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
-			PX4_ERR("CFG: %d OSPD\n", termios_state);
-			ret = -1;
+		if ((termios_state = cfsetispeed(&uart_config, B115200)) < 0) {
+			PX4_ERR("CFG: %d ISPD", termios_state);
+			ret = PX4_ERROR;
+			break;
+		}
+
+		if ((termios_state = cfsetospeed(&uart_config, B115200)) < 0) {
+			PX4_ERR("CFG: %d OSPD", termios_state);
+			ret = PX4_ERROR;
 			break;
 		}
 
 		uart_config.c_cflag = (uart_config.c_cflag & ~CSIZE) | CS8;
-		uart_config.c_iflag &= ~IGNBRK;
-		uart_config.c_lflag = 0;
-		uart_config.c_oflag = 0;
-		uart_config.c_cc[VMIN]  = 0;
-		uart_config.c_cc[VTIME] = 5;
-		uart_config.c_iflag &= ~(IXON | IXOFF | IXANY);
 		uart_config.c_cflag |= (CLOCAL | CREAD);
-		uart_config.c_cflag &= ~(PARENB | PARODD);
-		uart_config.c_cflag &= ~CSTOPB;
-		uart_config.c_cflag &= ~CRTSCTS;
+		uart_config.c_cflag &= ~(PARENB | PARODD | CSTOPB | CRTSCTS);
+
+		uart_config.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXOFF | IXANY);
+		uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+		uart_config.c_oflag &= ~(OPOST | ONLCR);
+
+		uart_config.c_cc[VMIN] = 0;
+		uart_config.c_cc[VTIME] = 0;
 
 		if ((termios_state = tcsetattr(_fd, TCSANOW, &uart_config)) < 0) {
 			PX4_ERR("baud %d ATTR", termios_state);
-			ret = -1;
+			ret = PX4_ERROR;
 			break;
 		}
 
+		tcflush(_fd, TCIFLUSH);
 
-		if (_fd < 0) {
-			PX4_ERR("FAIL: laser fd");
-			ret = -1;
-			break;
-		}
 	} while (0);
+
+	if (ret != PX4_OK) {
+		::close(_fd);
+		_fd = -1;
+	}
 
 	return ret;
 }
@@ -172,8 +167,8 @@ Microbrain_H201_1::open_port()
 void
 Microbrain_H201_1::start()
 {
-	// schedule a cycle to start things (the sensor sends at 20Hz, but we run a bit faster to avoid missing data)
-	ScheduleOnInterval(40_ms);
+	// The sensor publishes at 20 Hz; poll faster to keep driver-side latency low.
+	ScheduleOnInterval(kSampleInterval);
 }
 
 void
@@ -182,130 +177,130 @@ Microbrain_H201_1::stop()
 	ScheduleClear();
 }
 
-
 void
 Microbrain_H201_1::Run()
 {
-	// perform collection
-	if (collect() == -EAGAIN) {
-		// reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps
-		ScheduleClear();
-		ScheduleOnInterval(40_ms, 40_ms);
-		return;
-	}
+	collect();
 }
 
-
 void
-Microbrain_H201_1 ::print_info()
+Microbrain_H201_1::print_info()
 {
 	printf("Using port '%s'\n", _port);
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 }
 
+bool
+Microbrain_H201_1::is_valid_distance(float distance_m) const
+{
+	return PX4_ISFINITE(distance_m) && distance_m >= _min_range && distance_m <= _max_range;
+}
+
+bool
+Microbrain_H201_1::parse_byte(uint8_t byte, float &distance_m)
+{
+	switch (_parse_state) {
+	case ParseState::WaitHeader:
+		if (byte == kFrameHeader) {
+			_parse_state = ParseState::DataLow;
+		}
+
+		break;
+
+	case ParseState::DataLow:
+		_data_low = byte;
+		_parse_state = ParseState::DataHigh;
+		break;
+
+	case ParseState::DataHigh: {
+			const uint16_t raw_distance = ((byte & 0x7f) * 128u) + (_data_low & 0x7f);
+			const float decoded_distance_m = static_cast<float>(raw_distance) * kDistanceScaleM;
+			_parse_state = ParseState::WaitHeader;
+
+			if (is_valid_distance(decoded_distance_m)) {
+				distance_m = decoded_distance_m;
+				return true;
+			}
+
+			perf_count(_comms_errors);
+			break;
+		}
+	}
+
+	return false;
+}
 
 int Microbrain_H201_1::collect()
 {
-
-	// parse entire buffer
-	const hrt_abstime timestamp_sample = hrt_absolute_time();
-	float distance_m = -1.0f;
-
-
 	perf_begin(_sample_perf);
 
-	// clear buffer if last read was too long ago
-	int64_t read_elapsed = hrt_elapsed_time(&_last_read);
-
-	if (_fd < 0) {
-		open_port();
-	}
-
-	if (_fd < 0) {
-		PX4_ERR("Unable to open the port %s", _port);
+	if (open_port() != PX4_OK) {
+		perf_count(_comms_errors);
+		perf_end(_sample_perf);
 		return PX4_ERROR;
 	}
 
-	int ret = 0;
+	int bytes_available = 0;
 
-	do {
-		uint8_t header_byte[1];
-		ret = ::read(_fd, &header_byte, 1);
-
-		if (ret < 0) {
-			PX4_ERR("header_byte read err: %d", ret);
+	if (::ioctl(_fd, FIONREAD, (unsigned long)&bytes_available) < 0) {
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+			PX4_ERR("FIONREAD failed: %d", errno);
 			perf_count(_comms_errors);
-			perf_end(_sample_perf);
-
-			// only throw an error if we time out
-			if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
-				/* flush anything in RX buffer */
-				tcflush(_fd, TCIFLUSH);
-				return ret;
-
-			} else {
-				return -EAGAIN;
-			}
 		}
 
-		if (header_byte[0] == 0x48) {
-			uint8_t data_l[1];
-			ret = ::read(_fd, &data_l, 1);
+		bytes_available = kReadBufferSize;
+	}
 
-			if (ret < 0) {
-				PX4_ERR("data_l read err: %d", ret);
-				perf_count(_comms_errors);
-				perf_end(_sample_perf);
-
-				// only throw an error if we time out
-				if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
-					/* flush anything in RX buffer */
-					tcflush(_fd, TCIFLUSH);
-					return ret;
-
-				} else {
-					return -EAGAIN;
-				}
-			}
-
-			uint8_t data_h[1];
-			ret = ::read(_fd, &data_h, 1);
-
-			if (ret < 0) {
-				PX4_ERR("data_h read err: %d", ret);
-				perf_count(_comms_errors);
-				perf_end(_sample_perf);
-
-				// only throw an error if we time out
-				if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
-					/* flush anything in RX buffer */
-					tcflush(_fd, TCIFLUSH);
-					return ret;
-
-				} else {
-					return -EAGAIN;
-				}
-			}
-
-			if (data_h[0] != 255 && data_l[0] != 255) {
-				int low = data_l[0] & 0x7F;
-				int high = data_h[0] & 0x7F;
-				distance_m = (high * 128) + low;
-				distance_m = (distance_m * 2.5f) / 100.0f;
-				// publish most recent valid measurement from buffer
-				_px4_rangefinder.update(timestamp_sample, distance_m);
-				//PX4_INFO("time: %llu distance: %0.2f", timestamp_sample, (double)distance_m);
-			}
-
+	if (bytes_available <= 0) {
+		if (_last_read != 0 && hrt_elapsed_time(&_last_read) > kNoDataTimeout) {
+			_parse_state = ParseState::WaitHeader;
 		}
-	} while (0);
 
-	if (distance_m < 0.0f) {
 		perf_end(_sample_perf);
 		return -EAGAIN;
 	}
 
+	uint8_t read_buffer[kReadBufferSize] {};
+	float distance_m = -1.0f;
+	bool valid_sample = false;
+	const hrt_abstime timestamp_sample = hrt_absolute_time();
+
+	while (bytes_available > 0) {
+		const size_t bytes_to_read = bytes_available > static_cast<int>(sizeof(read_buffer)) ? sizeof(
+						     read_buffer) : bytes_available;
+		const ssize_t bytes_read = ::read(_fd, read_buffer, bytes_to_read);
+
+		if (bytes_read > 0) {
+			_last_read = hrt_absolute_time();
+
+			for (ssize_t i = 0; i < bytes_read; i++) {
+				if (parse_byte(read_buffer[i], distance_m)) {
+					valid_sample = true;
+				}
+			}
+
+			bytes_available -= bytes_read;
+
+		} else if (bytes_read == 0 || errno == EAGAIN || errno == EWOULDBLOCK) {
+			break;
+
+		} else {
+			PX4_ERR("read error: %d", errno);
+			perf_count(_comms_errors);
+			perf_end(_sample_perf);
+			::close(_fd);
+			_fd = -1;
+			return PX4_ERROR;
+		}
+	}
+
+	if (!valid_sample) {
+		perf_end(_sample_perf);
+		return -EAGAIN;
+	}
+
+	_px4_rangefinder.update(timestamp_sample, distance_m);
 
 	perf_end(_sample_perf);
 

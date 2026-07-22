@@ -48,7 +48,7 @@
 #include <math.h>
 #include <fcntl.h>
 #include <px4_log.h>
-#include <poll.h>
+#include <sys/ioctl.h>
 
 
 #include <px4_platform_common/px4_config.h>
@@ -82,6 +82,8 @@ private:
 	int collect();
 	void Run() override;
 	int open_port();
+	bool parse_byte(uint8_t byte, float &distance_m);
+	bool is_valid_distance(float distance_m) const;
 
 	void start();
 	void stop();
@@ -95,12 +97,23 @@ private:
 	float_t _h_fov;
 	float_t _v_fov;
 
-	static constexpr int kCONVERSIONINTERVAL{9_ms};
+	enum class ParseState : uint8_t {
+		WaitHeader,
+		DataLow,
+		DataHigh
+	};
+
+	static constexpr uint8_t kFrameHeader{0x48};
+	static constexpr int kSampleInterval{10_ms};
+	static constexpr int kNoDataTimeout{200_ms};
+	static constexpr size_t kReadBufferSize{64};
+	static constexpr float kDistanceScaleM{0.025f};
 
 	int _fd{-1};
 
 	hrt_abstime _last_read{0};
-	struct pollfd _fds;
+	ParseState _parse_state{ParseState::WaitHeader};
+	uint8_t _data_low{0};
 
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};
 	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": read")};

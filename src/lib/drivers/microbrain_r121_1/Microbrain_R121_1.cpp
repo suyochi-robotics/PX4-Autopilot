@@ -37,30 +37,28 @@
 /******************************************************************************************************** */
 #include "Microbrain_R121_1.hpp"
 
+#include <cerrno>
+
 Microbrain_R121_1::Microbrain_R121_1(const char *module_name, const char *port, uint8_t rotation, float_t min_range,
 				     float_t max_range,
 				     float_t h_fov, float_t v_fov): ScheduledWorkItem(module_name, px4::serial_port_to_wq(port)),
 	_px4_rangefinder(0, rotation), _fd(-1)
 {
-
-	// store port name
 	strncpy(_port, port, sizeof(_port) - 1);
-	// enforce null termination
 	_port[sizeof(_port) - 1] = '\0';
 
 	_rotation = rotation;
 	_min_range = min_range;
 	_max_range = max_range;
-
 	_h_fov = h_fov;
 	_v_fov = v_fov;
 
-	device::Device::DeviceId device_id;
+	device::Device::DeviceId device_id{};
 
 	device_id.devid_s.devtype = 0xF1;
 	device_id.devid_s.bus_type = device::Device::DeviceBusType_SERIAL;
 
-	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]); // Assuming '/dev/uart_configSx'
+	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]); // Assuming '/dev/ttySx'
 
 	if (bus_num < 10) {
 		device_id.devid_s.bus = bus_num;
@@ -68,7 +66,6 @@ Microbrain_R121_1::Microbrain_R121_1(const char *module_name, const char *port, 
 
 	_px4_rangefinder.set_device_id(device_id.devid);
 	_px4_rangefinder.set_rangefinder_type(distance_sensor_s::MAV_DISTANCE_SENSOR_RADAR);
-
 	_px4_rangefinder.set_orientation(rotation);
 
 	_px4_rangefinder.set_min_distance(min_range);
@@ -81,21 +78,22 @@ Microbrain_R121_1::~Microbrain_R121_1()
 {
 	stop();
 
+	if (_fd >= 0) {
+		::close(_fd);
+		_fd = -1;
+	}
+
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
 }
 
 int Microbrain_R121_1::init()
 {
-	int ret = open_port();
+	const int ret = open_port();
 
 	if (ret == PX4_OK) {
 		start();
 	}
-
-	//close the fd
-	::close(_fd);
-	_fd = -1;
 
 	return ret;
 }
@@ -103,66 +101,65 @@ int Microbrain_R121_1::init()
 int
 Microbrain_R121_1::open_port()
 {
+	if (_fd >= 0) {
+		return PX4_OK;
+	}
+
+	_fd = ::open(_port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+
+	if (_fd < 0) {
+		PX4_ERR("Error opening port %s", _port);
+		return PX4_ERROR;
+	}
+
 	int ret = PX4_OK;
+	termios uart_config{};
+	int termios_state{};
 
 	do {
-		// open fd
-		_fd = ::open(_port, O_RDWR | O_NOCTTY);
-
-		if (_fd < 0) {
-			PX4_ERR("Error opening fd");
-			PX4_ERR("port %s", _port);
-			return -1;
-		}
-
-		unsigned speed = B115200;
-		termios uart_config{};
-		int termios_state{};
-
-		tcgetattr(_fd, &uart_config);
-
-		// clear ONLCR flag (which appends a CR for every LF)
-		uart_config.c_oflag &= ~ONLCR;
-
-		// set baud rate
-		if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
-			PX4_ERR("CFG: %d ISPD", termios_state);
-			ret = -1;
+		if (tcgetattr(_fd, &uart_config) < 0) {
+			PX4_ERR("tcgetattr failed: %d", errno);
+			ret = PX4_ERROR;
 			break;
 		}
 
-		if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
-			PX4_ERR("CFG: %d OSPD\n", termios_state);
-			ret = -1;
+		if ((termios_state = cfsetispeed(&uart_config, B115200)) < 0) {
+			PX4_ERR("CFG: %d ISPD", termios_state);
+			ret = PX4_ERROR;
+			break;
+		}
+
+		if ((termios_state = cfsetospeed(&uart_config, B115200)) < 0) {
+			PX4_ERR("CFG: %d OSPD", termios_state);
+			ret = PX4_ERROR;
 			break;
 		}
 
 		uart_config.c_cflag = (uart_config.c_cflag & ~CSIZE) | CS8;
-		uart_config.c_iflag &= ~IGNBRK;
-		uart_config.c_lflag = 0;
-		uart_config.c_oflag = 0;
-		uart_config.c_cc[VMIN]  = 0;
-		uart_config.c_cc[VTIME] = 1;
-		uart_config.c_iflag &= ~(IXON | IXOFF | IXANY);
 		uart_config.c_cflag |= (CLOCAL | CREAD);
-		uart_config.c_cflag &= ~(PARENB | PARODD);
-		uart_config.c_cflag &= ~CSTOPB;
-		uart_config.c_cflag &= ~CRTSCTS;
+		uart_config.c_cflag &= ~(PARENB | PARODD | CSTOPB | CRTSCTS);
 
+		uart_config.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXOFF | IXANY);
+		uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+		uart_config.c_oflag &= ~(OPOST | ONLCR);
+
+		uart_config.c_cc[VMIN] = 0;
+		uart_config.c_cc[VTIME] = 0;
 
 		if ((termios_state = tcsetattr(_fd, TCSANOW, &uart_config)) < 0) {
 			PX4_ERR("baud %d ATTR", termios_state);
-			ret = -1;
+			ret = PX4_ERROR;
 			break;
 		}
 
+		tcflush(_fd, TCIFLUSH);
 
-		if (_fd < 0) {
-			PX4_ERR("FAIL: laser fd");
-			ret = -1;
-			break;
-		}
 	} while (0);
+
+	if (ret != PX4_OK) {
+		::close(_fd);
+		_fd = -1;
+	}
 
 	return ret;
 }
@@ -170,8 +167,8 @@ Microbrain_R121_1::open_port()
 void
 Microbrain_R121_1::start()
 {
-	// schedule a cycle to start things (the sensor sends at 20Hz, but we run a bit faster to avoid missing data)
-	ScheduleOnInterval(40_ms);
+	// The sensor publishes at 20 Hz; poll slightly faster than the frame period.
+	ScheduleOnInterval(kSampleInterval);
 }
 
 void
@@ -180,19 +177,11 @@ Microbrain_R121_1::stop()
 	ScheduleClear();
 }
 
-
 void
 Microbrain_R121_1::Run()
 {
-	// perform collection
-	if (collect() == -EAGAIN) {
-		// reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps
-		ScheduleClear();
-		ScheduleOnInterval(40_ms, 40_ms);
-		return;
-	}
+	collect();
 }
-
 
 void
 Microbrain_R121_1::print_info()
@@ -202,140 +191,162 @@ Microbrain_R121_1::print_info()
 	perf_print_counter(_comms_errors);
 }
 
+bool
+Microbrain_R121_1::is_valid_distance(float distance_m) const
+{
+	return PX4_ISFINITE(distance_m) && distance_m >= _min_range && distance_m <= _max_range;
+}
+
+bool
+Microbrain_R121_1::parse_frame(float &distance_m)
+{
+	if (_frame[kMarkerIndex] != kFrameMarker) {
+		perf_count(_comms_errors);
+		return false;
+	}
+
+	const uint8_t calculated_crc = calculateCRC(_frame, kCrcIndex);
+
+	if (calculated_crc != _frame[kCrcIndex]) {
+		perf_count(_comms_errors);
+		return false;
+	}
+
+	const uint16_t distance_mm = (static_cast<uint16_t>(_frame[kDistanceMsbIndex]) << 8) | _frame[kDistanceLsbIndex];
+
+	if (distance_mm == 0 || distance_mm == UINT16_MAX) {
+		return false;
+	}
+
+	const float decoded_distance_m = static_cast<float>(distance_mm) * 0.001f;
+
+	if (!is_valid_distance(decoded_distance_m)) {
+		perf_count(_comms_errors);
+		return false;
+	}
+
+	distance_m = decoded_distance_m;
+	return true;
+}
+
+bool
+Microbrain_R121_1::parse_byte(uint8_t byte, float &distance_m)
+{
+	switch (_parse_state) {
+	case ParseState::WaitHeader1:
+		if (byte == kFrameHeader1) {
+			_frame[0] = byte;
+			_parse_state = ParseState::WaitHeader2;
+		}
+
+		break;
+
+	case ParseState::WaitHeader2:
+		if (byte == kFrameHeader2) {
+			_frame[1] = byte;
+			_frame_index = 2;
+			_parse_state = ParseState::ReadFrame;
+
+		} else if (byte == kFrameHeader1) {
+			_frame[0] = byte;
+
+		} else {
+			_parse_state = ParseState::WaitHeader1;
+		}
+
+		break;
+
+	case ParseState::ReadFrame:
+		_frame[_frame_index++] = byte;
+
+		if (_frame_index >= kFrameSize) {
+			_parse_state = ParseState::WaitHeader1;
+			_frame_index = 0;
+			return parse_frame(distance_m);
+		}
+
+		break;
+	}
+
+	return false;
+}
 
 int Microbrain_R121_1::collect()
 {
-
-	// parse entire buffer
-	const hrt_abstime timestamp_sample = hrt_absolute_time();
-	float distance_m = -1.0f;
-
-
 	perf_begin(_sample_perf);
 
-	// clear buffer if last read was too long ago
-	int64_t read_elapsed = hrt_elapsed_time(&_last_read);
-
-	if (_fd < 0) {
-		open_port();
-	}
-
-	if (_fd < 0) {
-		PX4_ERR("Unable to open the port %s", _port);
+	if (open_port() != PX4_OK) {
+		perf_count(_comms_errors);
+		perf_end(_sample_perf);
 		return PX4_ERROR;
 	}
 
-	int ret = 0;
+	int bytes_available = 0;
 
-	do {
-		uint8_t all_bytes[20];
-		uint8_t first_byte;
-		ssize_t n1 = ::read(_fd, &first_byte, 1);
-		PX4_DEBUG("First byte %d", first_byte);
-
-		if (n1 == 1 && first_byte == 0x54) {
-			uint8_t second_byte;
-			ssize_t n2 = read(_fd, &second_byte, 1);
-			PX4_DEBUG("Second byte %d", second_byte);
-
-			if (n2 == 1 && second_byte == 0x48) {
-				uint8_t data_byte;
-
-				ssize_t counter = 0;
-				uint64_t start_time = hrt_absolute_time();
-
-				while (counter < 18) {
-					ssize_t n3 = read(_fd, &data_byte, 1);
-
-					if (n3 == 1) {
-						all_bytes[counter + 2] = data_byte;
-						++counter;
-					}
-
-					if (hrt_elapsed_time(&start_time) > 5_ms) {
-						PX4_DEBUG("Timeout while reading full frame");
-						return -EAGAIN;
-					}
-				}
-
-				all_bytes[0] = first_byte;
-				all_bytes[1] = second_byte;
-
-				// for (ssize_t i = 0; i < 20; ++i) {
-				// 	PX4_DEBUG("byte %d is %d", i, all_bytes[i]);
-				// }
-				if (all_bytes[2] == 255 || all_bytes[3] == 255) {
-					PX4_DEBUG("Invalid data bytes: %d, %d", all_bytes[2], all_bytes[3]);
-					continue;
-				}
-
-				// Commented CRC validation logic to improve the performance
-				/*uint8_t calc_crc = calculateCRC(all_bytes, 19);
-				uint8_t actual_crc = all_bytes[19];
-				if (calc_crc == actual_crc) {*/
-				uint16_t distance_mm = (all_bytes[2] << 8) | all_bytes[3];
-				distance_m = distance_mm / 1000.0;
-				//PX4_INFO("Distance: %f" , (double)distance_m);
-				_px4_rangefinder.update(timestamp_sample, distance_m);
-				/*} else {
-					PX4_DEBUG("CRC mismatch!");
-					perf_count(_comms_errors);
-					perf_end(_sample_perf);
-
-					// only throw an error if we time out
-					if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
-						tcflush(_fd, TCIFLUSH);
-						return ret;
-
-					} else {
-						return -EAGAIN;
-					}
-				}*/
-
-			} else {
-				PX4_DEBUG("Second byte headed didn't match");
-				perf_count(_comms_errors);
-				perf_end(_sample_perf);
-
-				// only throw an error if we time out
-				if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
-					/* flush anything in RX buffer */
-					tcflush(_fd, TCIFLUSH);
-					return ret;
-
-				} else {
-					return -EAGAIN;
-				}
-			}
-
-		} else {
-			PX4_DEBUG("First byte headed didn't match");
+	if (::ioctl(_fd, FIONREAD, (unsigned long)&bytes_available) < 0) {
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+			PX4_ERR("FIONREAD failed: %d", errno);
 			perf_count(_comms_errors);
-			perf_end(_sample_perf);
-
-			// only throw an error if we time out
-			if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
-				/* flush anything in RX buffer */
-				tcflush(_fd, TCIFLUSH);
-				return ret;
-
-			} else {
-				return -EAGAIN;
-			}
 		}
-	} while (0);
 
-	if (distance_m < 0.0f) {
+		bytes_available = kReadBufferSize;
+	}
+
+	if (bytes_available <= 0) {
+		if (_last_read != 0 && hrt_elapsed_time(&_last_read) > kNoDataTimeout) {
+			_parse_state = ParseState::WaitHeader1;
+			_frame_index = 0;
+		}
+
 		perf_end(_sample_perf);
 		return -EAGAIN;
 	}
 
+	uint8_t read_buffer[kReadBufferSize] {};
+	float distance_m = -1.0f;
+	bool valid_sample = false;
+	const hrt_abstime timestamp_sample = hrt_absolute_time();
+
+	while (bytes_available > 0) {
+		const size_t bytes_to_read = bytes_available > static_cast<int>(sizeof(read_buffer)) ? sizeof(
+						     read_buffer) : bytes_available;
+		const ssize_t bytes_read = ::read(_fd, read_buffer, bytes_to_read);
+
+		if (bytes_read > 0) {
+			_last_read = hrt_absolute_time();
+
+			for (ssize_t i = 0; i < bytes_read; i++) {
+				if (parse_byte(read_buffer[i], distance_m)) {
+					valid_sample = true;
+				}
+			}
+
+			bytes_available -= bytes_read;
+
+		} else if (bytes_read == 0 || errno == EAGAIN || errno == EWOULDBLOCK) {
+			break;
+
+		} else {
+			PX4_ERR("read error: %d", errno);
+			perf_count(_comms_errors);
+			perf_end(_sample_perf);
+			::close(_fd);
+			_fd = -1;
+			return PX4_ERROR;
+		}
+	}
+
+	if (!valid_sample) {
+		perf_end(_sample_perf);
+		return -EAGAIN;
+	}
+
+	_px4_rangefinder.update(timestamp_sample, distance_m);
 
 	perf_end(_sample_perf);
 
 	return PX4_OK;
 }
-
 
 uint8_t Microbrain_R121_1::calculateCRC(const uint8_t data[], size_t length)
 {

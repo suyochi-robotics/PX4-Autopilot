@@ -83,6 +83,10 @@ private:
 					msg.type = MAV_DISTANCE_SENSOR_INFRARED;
 					break;
 
+				case MAV_DISTANCE_SENSOR_RADAR:
+					msg.type = MAV_DISTANCE_SENSOR_RADAR;
+					break;
+
 				default:
 					msg.type = MAV_DISTANCE_SENSOR_LASER;
 					break;
