@@ -140,6 +140,9 @@ public:
 	 */
 	void publish_vehicle_command(vehicle_command_s &vehicle_command);
 
+	/** Set the planned mission's current item using the normal Mission path. */
+	bool set_mission_current_index(uint16_t index);
+
 #if CONFIG_NAVIGATOR_ADSB
 	/**
 	 * Check nearby traffic for potential collisions

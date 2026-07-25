@@ -147,6 +147,20 @@ PARAM_DEFINE_INT32(MIS_RSM_ARM_EN, 0);
 PARAM_DEFINE_FLOAT(MIS_RSM_MAX_DST, 1000.0f);
 
 /**
+ * Mission Resume: Maximum Vertical Resume Distance
+ *
+ * Maximum allowed altitude difference between the vehicle and the saved
+ * resume point. Resume is denied if exceeded.
+ *
+ * @unit m
+ * @min 1
+ * @max 1000
+ * @decimal 1
+ * @group Mission
+ */
+PARAM_DEFINE_FLOAT(MIS_RSM_MAX_ALT, 20.0f);
+
+/**
  * Mission Resume: Timestamp
  *
  * Timestamp (seconds since boot) when resume parameters were saved.

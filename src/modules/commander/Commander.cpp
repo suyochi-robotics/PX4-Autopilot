@@ -1618,26 +1618,34 @@ void Commander::save_mission_resume_point(uint8_t old_nav_state, uint8_t new_nav
 		return;
 	}
 
-	if (!PX4_ISFINITE(gpos.lat) || !PX4_ISFINITE(gpos.lon)) {
+	if (!gpos.lat_lon_valid || !gpos.alt_valid || !PX4_ISFINITE(gpos.lat) || !PX4_ISFINITE(gpos.lon)
+	    || !PX4_ISFINITE(gpos.alt)) {
 		PX4_WARN("ResumeMission: invalid global position, not saving");
 		return;
 	}
 
 	// ---- Convert + Save params ----
+	int32_t invalid = 0;
 	int32_t valid = 1;
 	int32_t mid = mr.mission_id;
 	int32_t idx = mr.seq_current;
+	int32_t timestamp_s = static_cast<int32_t>(hrt_absolute_time() / 1000000ULL);
 
 	int32_t lat_i = (int32_t)(gpos.lat * 1e7);
 	int32_t lon_i = (int32_t)(gpos.lon * 1e7);
 	float alt_f   = gpos.alt;
 
-	param_set_no_notification(param_find("MIS_RSM_VALID"), &valid);
-	param_set_no_notification(param_find("MIS_RSM_MID"), &mid);
-	param_set_no_notification(param_find("MIS_RSM_IDX"), &idx);
-	param_set_no_notification(param_find("MIS_RSM_LAT"), &lat_i);
-	param_set_no_notification(param_find("MIS_RSM_LON"), &lon_i);
-	param_set_no_notification(param_find("MIS_RSM_ALT"), &alt_f);
+	// VALID is the commit marker: it must never be visible while the payload
+	// is being replaced. param_set() also allows the normal parameter autosave
+	// mechanism to persist the record.
+	param_set(param_find("MIS_RSM_VALID"), &invalid);
+	param_set(param_find("MIS_RSM_MID"), &mid);
+	param_set(param_find("MIS_RSM_IDX"), &idx);
+	param_set(param_find("MIS_RSM_LAT"), &lat_i);
+	param_set(param_find("MIS_RSM_LON"), &lon_i);
+	param_set(param_find("MIS_RSM_ALT"), &alt_f);
+	param_set(param_find("MIS_RSM_TS"), &timestamp_s);
+	param_set(param_find("MIS_RSM_VALID"), &valid);
 
 	PX4_INFO("ResumeMission: Saved (idx=%" PRId32 " lat=%.7f lon=%.7f alt=%.2f)",
 		 idx, gpos.lat, gpos.lon, (double)gpos.alt);
@@ -1645,28 +1653,48 @@ void Commander::save_mission_resume_point(uint8_t old_nav_state, uint8_t new_nav
 
 void Commander::handleObstacleDetection()
 {
-	if (_vehicle_status.arming_state != vehicle_status_s::ARMING_STATE_ARMED) {
+	static constexpr hrt_abstime max_sensor_age = 1_s;
+
+	// This feature is only a stop/hold action for an airborne AUTO mission or
+	// RTL. It must never take ownership while on the ground.
+	const bool airborne = _vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED
+			      && _vehicle_land_detected.timestamp != 0
+			      && hrt_elapsed_time(&_vehicle_land_detected.timestamp) <= max_sensor_age
+			      && !_vehicle_land_detected.landed;
+
+	if (!airborne || !_param_obst_en_auto.get()) {
+		_obstacle_active = false;
 		return;
 	}
 
-	if (!_param_obst_en_auto.get()) {
+	// The pilot or a failsafe selected another mode. The obstacle handler no
+	// longer owns the mode and must never switch back to Mission or RTL.
+	if (_obstacle_active && _vehicle_status.nav_state != vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER) {
+		_obstacle_active = false;
 		return;
 	}
 
 	distance_sensor_s ds{};
 	bool obstacle_detected = false;
+	const float trigger_distance = _param_obst_trig_dist.get();
 
-	// --- Step 1: Read distance sensors ---
+	if (!PX4_ISFINITE(trigger_distance) || trigger_distance <= 0.0f) {
+		return;
+	}
+
+	// Only fresh, in-range forward measurements can trigger HOLD. Once HOLD is
+	// active, a missing sensor reading intentionally does nothing: HOLD remains
+	// until the pilot chooses the next mode.
 	for (int i = 0; i < _distance_sensor_subs.size(); i++) {
 		if (_distance_sensor_subs[i].updated()) {
 			_distance_sensor_subs[i].copy(&ds);
 
 			if (ds.orientation == distance_sensor_s::ROTATION_FORWARD_FACING &&
+			    ds.timestamp != 0 && hrt_elapsed_time(&ds.timestamp) <= max_sensor_age &&
 			    PX4_ISFINITE(ds.current_distance) &&
-			    ds.current_distance > 0.2f) {
-
-				// Read trigger distance parameter only when needed
-				const float trigger_distance = _param_obst_trig_dist.get();
+			    PX4_ISFINITE(ds.min_distance) && PX4_ISFINITE(ds.max_distance) &&
+			    ds.min_distance <= ds.max_distance &&
+			    ds.current_distance >= ds.min_distance && ds.current_distance <= ds.max_distance) {
 
 				if (ds.current_distance < trigger_distance) {
 					obstacle_detected = true;
@@ -1676,56 +1704,21 @@ void Commander::handleObstacleDetection()
 		}
 	}
 
-	const hrt_abstime now = hrt_absolute_time();
-
-	// --- Step 2: Immediate HOLD on detection ---
 	if (obstacle_detected) {
-		_last_obstacle_time = now;
-
 		if (!_obstacle_active &&
 		    (_vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION ||
 		     _vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL)) {
 
-			_obstacle_prev_mode = _vehicle_status.nav_state;
-			_obstacle_active = true;
-
 			mavlink_log_critical(&_mavlink_log_pub, "⚠️ Obstacle detected! Switching to HOLD");
-			_user_mode_intention.change(
-				vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER,
-				ModeChangeSource::ModeExecutor,
-				true,  // allow_fallback
-				true    // force
-			);
-		}
 
-		// --- Step 3: Resume after obstacle clears for configured time ---
-
-	} else if (_obstacle_active) {
-		const float clear_time_sec = _param_obst_clear_time.get(); // read only when obstacle was active
-
-		if (hrt_elapsed_time(&_last_obstacle_time) > (clear_time_sec * 1_s)) {
-
-			if (_obstacle_prev_mode == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
-				mavlink_log_info(&_mavlink_log_pub, "✅ Obstacle cleared, resuming Mission");
-				_user_mode_intention.change(
-					vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION,
-					ModeChangeSource::ModeExecutor,
-					false,
-					true
-				);
-
-			} else if (_obstacle_prev_mode == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL) {
-				mavlink_log_info(&_mavlink_log_pub, "✅ Obstacle cleared, resuming RTL");
-				_user_mode_intention.change(
-					vehicle_status_s::NAVIGATION_STATE_AUTO_RTL,
-					ModeChangeSource::ModeExecutor,
-					false,
-					true
-				);
+			if (_user_mode_intention.change(
+				    vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER,
+				    ModeChangeSource::ModeExecutor,
+				    true,  // allow_fallback
+				    true    // force
+			    )) {
+				_obstacle_active = true;
 			}
-
-			_obstacle_active = false;
-			_obstacle_prev_mode = 0;
 		}
 	}
 }

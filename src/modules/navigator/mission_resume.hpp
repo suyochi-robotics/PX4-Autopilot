@@ -68,6 +68,9 @@ struct ResumeData {
 /** Load resume data from params. Returns true if MIS_RESUME_VALID==1 and params read. */
 bool load_resume_data(ResumeData &r);
 
+/** Validate a decoded resume record before it is used for navigation. */
+bool resume_data_valid(const ResumeData &r);
+
 /** Clear resume params (MIS_RESUME_VALID = 0 ...) */
 void clear_resume_data();
 
@@ -107,15 +110,19 @@ private:
 
 	bool is_armed();
 	bool is_landed();
+	bool land_detection_valid();
 	bool position_valid();
 	bool altitude_valid();
 	bool reached_alt(float target_amsl);
 	bool reached_position(double lat, double lon, float alt);
 	bool compute_distance_to_given_point(double lat, double lon, float alt, double &dist_xy_m, float &dist_z_m);
+	void fail_resume(const char *reason);
 
 	// configuration
 	float _accept_radius_m = 5.0f;
 	float _accept_alt_m = 2.5f;
 	int _takeoff_timeout_s = 30;
 	int _goto_timeout_s = 120;
+	hrt_abstime _last_arm_request{0};
+	bool _failure_reported{false};
 };
