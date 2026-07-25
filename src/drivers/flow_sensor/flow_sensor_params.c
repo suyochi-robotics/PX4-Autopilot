@@ -31,5 +31,24 @@
  *
  ****************************************************************************/
 
-PARAM_DEFINE_INT32(FLOW_CAP_ENABLE, 0); //parameter to enable the flow sensor
-PARAM_DEFINE_FLOAT(FLOW_CAL_FACTOR, 7.5f); // calibration factor for each sensor varies
+/**
+ * Enable flow sensor pulse capture at boot.
+ *
+ * @boolean
+ * @reboot_required true
+ * @group Flow Sensor
+ */
+PARAM_DEFINE_INT32(FLOW_CAP_ENABLE, 0);
+
+/**
+ * Flow sensor calibration factor.
+ *
+ * Scale factor converting pulses measured over one second to L/min. This is
+ * loaded when the driver starts and remains fixed until reboot.
+ *
+ * @min 0.001
+ * @decimal 3
+ * @reboot_required true
+ * @group Flow Sensor
+ */
+PARAM_DEFINE_FLOAT(FLOW_CAL_FACTOR, 7.5f);
