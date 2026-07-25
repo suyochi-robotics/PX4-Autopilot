@@ -39,26 +39,21 @@ FlowSensor::FlowSensor() :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
 	ModuleParams(nullptr)
 {
-	_flow_pub.advertise();
-	ScheduleNow();
-
 }
 
 FlowSensor::~FlowSensor()
 {
-	if (_channel >= 0) {
-		io_timer_unallocate_channel(_channel);
-		px4_arch_gpiosetevent(_flow_gpio, false, false, false, nullptr, nullptr);
-	}
-
 	ScheduleClear();
+
+	if (_channel >= 0) {
+		px4_arch_gpiosetevent(_flow_gpio, false, false, false, nullptr, nullptr);
+		io_timer_unallocate_channel(_channel);
+		_channel = -1;
+	}
 }
 
 bool FlowSensor::init()
 {
-	bool success = false;
-
-	/**************Directly setting the parameter vaslue use the below code ********** */
 	for (unsigned i = 0; i < PWM_OUTPUT_MAX_CHANNELS; ++i) {
 		char param_name[17];
 		snprintf(param_name, sizeof(param_name), "%s_%s%d", PARAM_PREFIX, "FUNC", i + 1);
@@ -67,14 +62,12 @@ bool FlowSensor::init()
 
 		if (function_handle != PARAM_INVALID && param_get(function_handle, &function) == 0) {
 			// PX4_INFO(" param : %s, value: %ld", param_name, function);
-			if (function == 2071) { // FlowSensor input function id
+			if (function == FLOW_SENSOR_FUNCTION_ID) {
 				_channel = i;
 				break; // Exit loop once we find the channel
 			}
 		}
 	}
-
-	PX4_INFO("FlowSensor set to channel: %d", _channel);
 
 	if (_channel == -1) {
 		PX4_WARN("No FlowSensor channel configured");
@@ -84,73 +77,64 @@ bool FlowSensor::init()
 	int ret = io_timer_allocate_channel(_channel, IOTimerChanMode_Capture);
 
 	if (ret != PX4_OK) {
+		PX4_ERR("Failed to allocate flow sensor channel %d (%d)", _channel, ret);
 		return false;
 	}
 
 	_flow_gpio = PX4_MAKE_GPIO_EXTI(io_timer_channel_get_as_pwm_input(_channel));
 	int ret_val = px4_arch_gpiosetevent(_flow_gpio, false, true, true, &FlowSensor::gpio_interrupt_callback, this);
 
-	if (ret_val == PX4_OK) {
-		success = true;
+	if (ret_val != PX4_OK) {
+		PX4_ERR("Failed to configure flow sensor interrupt (%d)", ret_val);
+		io_timer_unallocate_channel(_channel);
+		_channel = -1;
+		return false;
+	}
+
+	const param_t flow_cal_handle = param_find("FLOW_CAL_FACTOR");
+
+	if (flow_cal_handle == PARAM_INVALID || param_get(flow_cal_handle, &_cal_factor) != PX4_OK
+	    || !PX4_ISFINITE(_cal_factor) || _cal_factor <= 0.0f) {
+		PX4_ERR("FLOW_CAL_FACTOR must be finite and greater than zero");
+		px4_arch_gpiosetevent(_flow_gpio, false, false, false, nullptr, nullptr);
+		io_timer_unallocate_channel(_channel);
+		_channel = -1;
+		return false;
 	}
 
 	_last_publish_time = hrt_absolute_time();
-
-	return success;
+	ScheduleDelayed(INTERVAL);
+	return true;
 }
 
 void FlowSensor::Run()
 {
-	// Default calibration factor
-	param_t flow_cal_handle = param_find("FLOW_CAL_FACTOR");
-	// if(flow_cal_handle == PARAM_INVALID) {
-	// 	PX4_ERR("FLOW_CAL_FACTOR parameter not found");
-	// 	return;
-	// }
-
-	float param_cal_factor = 0.0f;
-	param_get(flow_cal_handle, &param_cal_factor);
-	int ret = param_set(flow_cal_handle, &param_cal_factor);
-
-	if (ret != PX4_OK) {
-		PX4_ERR("Failed to set FLOW_CAL_FACTOR parameter");
-		return;
-	}
-
-	// else if(ret == PX4_OK) {
-	// 	PX4_ERR("Flow Calib factor is  %.2f", (double)param_calib_factor);
-
-	// }
-
 	if (should_exit()) {
 		exit_and_cleanup();
 		return;
-
 	}
 
-	hrt_abstime now = hrt_absolute_time();
+	const hrt_abstime now = hrt_absolute_time();
+	const hrt_abstime elapsed_us = now - _last_publish_time;
+	const float elapsed_s = static_cast<float>(elapsed_us) * 1e-6f;
 
-	if ((now - _last_publish_time) >= INTERVAL) {
-		count = _pulse_count;
-		_pulse_count.store(0); // Reset after counting
+	uint32_t pulse_count = _pulse_count.load();
 
-		if (param_cal_factor <= 0.0f) {
-			// PX4_ERR("Calibration factor is zero or -ve, cannot calculate flow rate");
-			return;
-		}
+	while (!_pulse_count.compare_exchange(&pulse_count, 0)) {}
 
-		float flow_rate_lpm = (static_cast<float>(count.load())) / param_cal_factor;
+	// FLOW_CAL_FACTOR is calibrated for a one-second measurement interval.
+	const float flow_rate_lpm = (static_cast<float>(pulse_count) / _cal_factor) / elapsed_s;
+	_total_volume_liters += flow_rate_lpm * elapsed_s / 60.0f;
 
-		sensor_flow_sensor_s flow_msg{};
-		flow_msg.timestamp = now;
-		flow_msg.flow_rate_lpm = flow_rate_lpm;
-		flow_msg.cal_factor = param_cal_factor;
-		flow_msg.pulse_count = count.load();
-		_flow_pub.publish(flow_msg);
+	sensor_flow_sensor_s flow_msg{};
+	flow_msg.timestamp = now;
+	flow_msg.flow_rate_lpm = flow_rate_lpm;
+	flow_msg.pulse_count = pulse_count;
+	flow_msg.total_volume_liters = _total_volume_liters;
+	flow_msg.cal_factor = _cal_factor;
+	_flow_pub.publish(flow_msg);
 
-		PX4_INFO("Flow rate: %.2f L/min (%ld pulses)", (double)flow_rate_lpm, count.load());
-		_last_publish_time = hrt_absolute_time();
-	}
+	_last_publish_time = now;
 
 	ScheduleDelayed(INTERVAL);
 }

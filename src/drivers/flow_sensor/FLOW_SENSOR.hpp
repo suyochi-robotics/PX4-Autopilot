@@ -46,7 +46,6 @@
 #include <systemlib/mavlink_log.h>
 
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/sensor_flow_sensor.h>
 
 using namespace time_literals;
@@ -67,16 +66,17 @@ public:
 	static int print_usage(const char *reason = nullptr);
 	static constexpr hrt_abstime INTERVAL = 1_s;
 private:
-	// static constexpr uint32_t PARAM_FUNCTION_ID = 2071; // Make sure this matches your config
+	static constexpr int32_t FLOW_SENSOR_FUNCTION_ID = 2071;
 
 	int _channel{-1};
 	uint32_t _flow_gpio{0};
 	px4::atomic<uint32_t> _pulse_count{0};
-	px4::atomic<uint32_t> count{0};
 
 	hrt_abstime _last_publish_time{0};
+	float _cal_factor{0.0f};
+	float _total_volume_liters{0.0f};
 
-	uORB::PublicationMulti<sensor_flow_sensor_s> _flow_pub{ORB_ID(sensor_flow_sensor)};
+	uORB::Publication<sensor_flow_sensor_s> _flow_pub{ORB_ID(sensor_flow_sensor)};
 
 	static int gpio_interrupt_callback(int irq, void *context, void *arg);
 };
