@@ -211,8 +211,6 @@ private:
 	uORB::SubscriptionMultiArray<distance_sensor_s> _distance_sensor_subs{ORB_ID::distance_sensor};
 
 	bool _obstacle_active{false};
-	uint8_t _obstacle_prev_mode{0};
-	hrt_abstime _last_obstacle_time{0};
 
 	/*** End of Obstacle Collision Preventions ***/
 
@@ -366,7 +364,6 @@ private:
 		// 🚧 Custom obstacle prevention parameters (Suyochi Robotics)
 		// ------------------------------------------------------------------
 		(ParamBool<px4::params::OBST_EN_AUTO>)       _param_obst_en_auto,
-		(ParamFloat<px4::params::OBST_TRIG_DIST>)    _param_obst_trig_dist,
-		(ParamFloat<px4::params::OBST_CLEAR_TIME>)   _param_obst_clear_time
+		(ParamFloat<px4::params::OBST_TRIG_DIST>)    _param_obst_trig_dist
 	);
 };

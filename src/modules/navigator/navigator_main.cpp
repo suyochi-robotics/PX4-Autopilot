@@ -129,6 +129,11 @@ Navigator::~Navigator()
 	orb_unsubscribe(_vehicle_status_sub);
 }
 
+bool Navigator::set_mission_current_index(uint16_t index)
+{
+	return _mission.set_current_mission_index(index);
+}
+
 void Navigator::params_update()
 {
 	updateParams();

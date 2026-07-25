@@ -55,13 +55,19 @@
 
 static constexpr float DEFAULT_MAX_DIST_M = 1000.0f;
 static constexpr float MIN_TAKEOFF_ALT = 10.0f; // meters AGL or AMSL depending on your alt reference
+static constexpr hrt_abstime MAX_POSITION_AGE_US = 2_s;
+static constexpr hrt_abstime MAX_LAND_DETECTION_AGE_US = 2_s;
 
 /* ---------------------- params helpers ---------------------- */
 
 bool mission_resume::load_resume_data(ResumeData &r)
 {
+	r = {};
 	int32_t valid = 0;
-	param_get(param_find("MIS_RSM_VALID"), &valid);
+
+	if (param_get(param_find("MIS_RSM_VALID"), &valid) != PX4_OK) {
+		return false;
+	}
 
 	if (valid != 1) {
 		return false;
@@ -73,11 +79,13 @@ bool mission_resume::load_resume_data(ResumeData &r)
 	float alt_f = 0.0f;
 	int32_t mid = 0;
 
-	param_get(param_find("MIS_RSM_IDX"), &idx);
-	param_get(param_find("MIS_RSM_LAT"), &lat_i);
-	param_get(param_find("MIS_RSM_LON"), &lon_i);
-	param_get(param_find("MIS_RSM_ALT"), &alt_f);
-	param_get(param_find("MIS_RSM_MID"), &mid);
+	if (param_get(param_find("MIS_RSM_IDX"), &idx) != PX4_OK
+	    || param_get(param_find("MIS_RSM_LAT"), &lat_i) != PX4_OK
+	    || param_get(param_find("MIS_RSM_LON"), &lon_i) != PX4_OK
+	    || param_get(param_find("MIS_RSM_ALT"), &alt_f) != PX4_OK
+	    || param_get(param_find("MIS_RSM_MID"), &mid) != PX4_OK) {
+		return false;
+	}
 
 	r.valid = true;
 	r.index = idx;
@@ -86,7 +94,17 @@ bool mission_resume::load_resume_data(ResumeData &r)
 	r.alt = alt_f;
 	r.mission_id = mid;
 
-	return true;
+	return resume_data_valid(r);
+}
+
+bool mission_resume::resume_data_valid(const ResumeData &r)
+{
+	return r.valid
+	       && r.index >= 0
+	       && r.mission_id != 0
+	       && PX4_ISFINITE(r.lat) && r.lat >= -90.0 && r.lat <= 90.0
+	       && PX4_ISFINITE(r.lon) && r.lon >= -180.0 && r.lon <= 180.0
+	       && PX4_ISFINITE(r.alt);
 }
 
 void mission_resume::clear_resume_data()
@@ -94,13 +112,15 @@ void mission_resume::clear_resume_data()
 	int32_t z = 0;
 	float fz = 0.0f;
 
-	param_set_no_notification(param_find("MIS_RSM_VALID"), &z);
-	param_set_no_notification(param_find("MIS_RSM_IDX"), &z);
-	param_set_no_notification(param_find("MIS_RSM_LAT"), &z);
-	param_set_no_notification(param_find("MIS_RSM_LON"), &z);
-	param_set_no_notification(param_find("MIS_RSM_MID"), &z);
-	param_set_no_notification(param_find("MIS_RSM_TS"), &z);
-	param_set_no_notification(param_find("MIS_RSM_ALT"), &fz);
+	// Invalidate first. This also asks the normal parameter autosave mechanism
+	// to persist the fact that this record must not be reused after a reboot.
+	param_set(param_find("MIS_RSM_VALID"), &z);
+	param_set(param_find("MIS_RSM_IDX"), &z);
+	param_set(param_find("MIS_RSM_LAT"), &z);
+	param_set(param_find("MIS_RSM_LON"), &z);
+	param_set(param_find("MIS_RSM_MID"), &z);
+	param_set(param_find("MIS_RSM_TS"), &z);
+	param_set(param_find("MIS_RSM_ALT"), &fz);
 }
 
 /* ---------------------- MissionResume class ---------------------- */
@@ -120,11 +140,12 @@ void MissionResume::on_activation()
 	PX4_INFO("MissionResume: activated");
 	_state = State::Start;
 	_state_start = hrt_absolute_time();
+	_last_arm_request = 0;
+	_failure_reported = false;
 
 	// Load data once during activation
 	if (!mission_resume::load_resume_data(_r) || !_r.valid) {
-		PX4_WARN("MissionResume: no resume data");
-		_state = State::Fail;
+		fail_resume("resume record is missing or invalid");
 		return;
 	}
 }
@@ -132,13 +153,15 @@ void MissionResume::on_activation()
 bool MissionResume::position_valid()
 {
 	const vehicle_global_position_s *gpos = _navigator->get_global_position();
-	return (gpos && PX4_ISFINITE(gpos->lat) && PX4_ISFINITE(gpos->lon));
+	return (gpos && gpos->lat_lon_valid && PX4_ISFINITE(gpos->lat) && PX4_ISFINITE(gpos->lon)
+		&& hrt_elapsed_time(&gpos->timestamp) <= MAX_POSITION_AGE_US);
 }
 
 bool MissionResume::altitude_valid()
 {
 	const vehicle_global_position_s *gpos = _navigator->get_global_position();
-	return (gpos && PX4_ISFINITE(gpos->alt));
+	return (gpos && gpos->alt_valid && PX4_ISFINITE(gpos->alt)
+		&& hrt_elapsed_time(&gpos->timestamp) <= MAX_POSITION_AGE_US);
 }
 
 bool MissionResume::is_armed()
@@ -151,6 +174,12 @@ bool MissionResume::is_landed()
 {
 	const vehicle_land_detected_s *ld = _navigator->get_land_detected();
 	return (ld && ld->landed);
+}
+
+bool MissionResume::land_detection_valid()
+{
+	const vehicle_land_detected_s *ld = _navigator->get_land_detected();
+	return ld && ld->timestamp != 0 && hrt_elapsed_time(&ld->timestamp) <= MAX_LAND_DETECTION_AGE_US;
 }
 
 bool MissionResume::reached_alt(float target_amsl)
@@ -273,7 +302,28 @@ bool MissionResume::compute_distance_to_given_point(
 	dist_xy_m = static_cast<double>(xy);
 	dist_z_m  = fabsf(z);
 
-	return true;
+	return PX4_ISFINITE(dist_xy_m) && PX4_ISFINITE(dist_z_m);
+}
+
+void MissionResume::fail_resume(const char *reason)
+{
+	if (_failure_reported) {
+		return;
+	}
+
+	_failure_reported = true;
+	_state = State::Fail;
+	PX4_WARN("MissionResume: %s", reason);
+
+	// Do not leave a bad record selecting this mode forever. The next explicit
+	// AUTO.MISSION request can use a newly saved, valid record.
+	mission_resume::clear_resume_data();
+	_navigator->reset_triplets();
+
+	// A failed airborne resume must not fall through to normal mission control.
+	vehicle_command_s command{};
+	command.command = vehicle_command_s::VEHICLE_CMD_NAV_LOITER_UNLIM;
+	_navigator->publish_vehicle_command(command);
 }
 
 /* -------------------- State machine -------------------- */
@@ -282,13 +332,13 @@ void MissionResume::on_active()
 {
 	// If position not valid, fail early
 	if (!position_valid()) {
-		PX4_WARN("MissionResume: no valid global position");
+		fail_resume("global position is invalid or stale");
 		return;
 	}
 
 	// If altitude not valid, fail early
 	if (!altitude_valid()) {
-		PX4_WARN("MissionResume: no valid altitude");
+		fail_resume("altitude estimate is invalid or stale");
 		return;
 	}
 
@@ -296,35 +346,42 @@ void MissionResume::on_active()
 	const mission_result_s *mr = _navigator->get_mission_result();
 
 	if (!mr || !mr->valid || mr->seq_total == 0) {
-		PX4_WARN("MissionResume: no mission available");
+		fail_resume("mission is unavailable or invalid");
 		return;
 	}
 
 	if (_r.mission_id == 0) {
-		PX4_WARN("MissionResume: no saved mission ID");
+		fail_resume("saved mission ID is invalid");
 		return;
 	}
 
 	if (static_cast<uint32_t>(_r.mission_id) != mr->mission_id) {
-		PX4_WARN("MissionResume: mission id changed (%" PRIu32 " != %" PRIu32 ")", static_cast<uint32_t>(_r.mission_id),
-			 mr->mission_id);
+		fail_resume("mission changed since the resume point was saved");
 		return;
 	}
 
 	if (static_cast<uint32_t>(_r.index) >= mr->seq_total) {
-		PX4_WARN("MissionResume: resume index %" PRId32 " >= seq_total %" PRIu32, _r.index,
-			 static_cast<uint32_t>(mr->seq_total));
+		fail_resume("saved mission index is outside the current mission");
 		return;
 	}
 
 	// Load configurable max distance
 	float max_dist = DEFAULT_MAX_DIST_M;
-	param_get(param_find("MIS_RSM_MAX_DST"), &max_dist);
+	float max_alt_dist = 20.0f;
+
+	if (param_get(param_find("MIS_RSM_MAX_DST"), &max_dist) != PX4_OK
+	    || param_get(param_find("MIS_RSM_MAX_ALT"), &max_alt_dist) != PX4_OK
+	    || !PX4_ISFINITE(max_dist) || max_dist <= 0.0f
+	    || !PX4_ISFINITE(max_alt_dist) || max_alt_dist <= 0.0f) {
+		fail_resume("resume distance limits are invalid");
+		return;
+	}
 
 	double dist_xy = 0.0;
 	float  dist_z  = 0.0f;
 
 	if (!compute_distance_to_given_point(_r.lat, _r.lon, _r.alt, dist_xy, dist_z)) {
+		fail_resume("distance to the resume point is invalid");
 		return;
 	}
 
@@ -335,7 +392,26 @@ void MissionResume::on_active()
 	case State::Start: {
 			// Distance check
 			if (dist_to_resume > static_cast<double>(max_dist)) {
-				PX4_WARN("MissionResume: resume distance %.1f m > allowed %.1f m", dist_to_resume, static_cast<double>(max_dist));
+				fail_resume("resume point exceeds the horizontal distance limit");
+				return;
+			}
+
+			if (dist_z > max_alt_dist) {
+				fail_resume("resume point exceeds the vertical distance limit");
+				return;
+			}
+
+			if (!land_detection_valid()) {
+				fail_resume("land detector state is invalid or stale");
+				return;
+			}
+
+			const vehicle_status_s *vstatus = _navigator->get_vstatus();
+
+			if (is_landed() && vstatus
+			    && vstatus->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING
+			    && !vstatus->is_vtol) {
+				fail_resume("landed fixed-wing mission resume is unsupported");
 				return;
 			}
 
@@ -361,14 +437,21 @@ void MissionResume::on_active()
 
 	case State::WaitArm: {
 			int32_t arm_en = 0;
-			param_get(param_find("MIS_RSM_ARM_EN"), &arm_en);
+
+			if (param_get(param_find("MIS_RSM_ARM_EN"), &arm_en) != PX4_OK) {
+				fail_resume("auto-arm setting is unavailable");
+				return;
+			}
 
 			if (!is_armed()) {
 				if (arm_en == 1) {
-					publish_arm_request();
+					if (_last_arm_request == 0 || hrt_elapsed_time(&_last_arm_request) >= 1_s) {
+						publish_arm_request();
+						_last_arm_request = hrt_absolute_time();
+					}
 
 				} else {
-					PX4_WARN("MissionResume: auto-arm disabled; aborting");
+					// Manual arming is allowed when automatic arming is disabled.
 					return;
 				}
 			}
@@ -386,7 +469,7 @@ void MissionResume::on_active()
 				}
 
 			} else if (hrt_elapsed_time(&_state_start) > static_cast<hrt_abstime>(_takeoff_timeout_s * 1_s)) {
-				PX4_WARN("MissionResume: arming timeout");
+				fail_resume("arming timed out");
 				return;
 			}
 
@@ -400,8 +483,13 @@ void MissionResume::on_active()
 
 			// Get home altitude AMSL
 			const home_position_s *home = _navigator->get_home_position();
-			float mis_takeoff_amsl = home ? (home->alt + mis_takeoff_rel)
-						 : (_r.alt); // fallback if no home
+
+			if (!home || !home->valid_alt || !PX4_ISFINITE(home->alt) || !PX4_ISFINITE(mis_takeoff_rel)) {
+				fail_resume("home altitude or takeoff altitude is invalid");
+				return;
+			}
+
+			float mis_takeoff_amsl = home->alt + mis_takeoff_rel;
 
 			// Now both values are AMSL → safe to compare
 			float climb_alt = math::max(_r.alt, mis_takeoff_amsl);
@@ -415,7 +503,7 @@ void MissionResume::on_active()
 
 			} else if (hrt_elapsed_time(&_state_start) >
 				   static_cast<hrt_abstime>(_takeoff_timeout_s * 1_s)) {
-				PX4_WARN("MissionResume: takeoff timeout");
+				fail_resume("takeoff timed out");
 				return;
 			}
 
@@ -431,7 +519,7 @@ void MissionResume::on_active()
 				_state_start = hrt_absolute_time();
 
 			} else if (hrt_elapsed_time(&_state_start) > static_cast<hrt_abstime>(_goto_timeout_s * 1_s)) {
-				PX4_WARN("MissionResume: goto timeout");
+				fail_resume("goto resume point timed out");
 				return;
 			}
 
@@ -441,11 +529,10 @@ void MissionResume::on_active()
 	case State::Commit: {
 			PX4_INFO("MissionResume: committing mission start index %d", (int)_r.index);
 
-			mission_result_s *mr_updatable = _navigator->get_mission_result();
-			mr_updatable->seq_current = _r.index;
-			mr_updatable->valid = true;
-			mr_updatable->finished = false;
-			// Do NOT publish here. Navigator publishes mission_result automatically.
+			if (!_navigator->set_mission_current_index(static_cast<uint16_t>(_r.index))) {
+				fail_resume("mission rejected the saved resume index");
+				return;
+			}
 
 			mission_resume::clear_resume_data();
 
