@@ -38,6 +38,7 @@
 #include "Microbrain_H201_1.hpp"
 
 #include <cerrno>
+#include <mathlib/mathlib.h>
 
 Microbrain_H201_1::Microbrain_H201_1(const char *module_name, const char *port, uint8_t rotation, float_t min_range,
 				     float_t max_range,
@@ -70,8 +71,9 @@ Microbrain_H201_1::Microbrain_H201_1(const char *module_name, const char *port, 
 
 	_px4_rangefinder.set_min_distance(min_range);
 	_px4_rangefinder.set_max_distance(max_range);
-	_px4_rangefinder.set_hfov(h_fov);
-	_px4_rangefinder.set_vfov(v_fov);
+	// The parameters are configured in degrees, while distance_sensor expects radians.
+	_px4_rangefinder.set_hfov(math::radians(h_fov));
+	_px4_rangefinder.set_vfov(math::radians(v_fov));
 }
 
 Microbrain_H201_1::~Microbrain_H201_1()
@@ -89,13 +91,10 @@ Microbrain_H201_1::~Microbrain_H201_1()
 
 int Microbrain_H201_1::init()
 {
-	const int ret = open_port();
-
-	if (ret == PX4_OK) {
-		start();
-	}
-
-	return ret;
+	// File descriptors are local to the NuttX task that opens them. The driver
+	// runs on a serial work queue, so defer opening the UART until Run().
+	start();
+	return PX4_OK;
 }
 
 int
