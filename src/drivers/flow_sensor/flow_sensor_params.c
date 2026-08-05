@@ -43,8 +43,9 @@ PARAM_DEFINE_INT32(FLOW_CAP_ENABLE, 0);
 /**
  * Flow sensor calibration factor.
  *
- * Scale factor converting pulses measured over one second to L/min. This is
- * loaded when the driver starts and remains fixed until reboot.
+ * Pulse frequency per L/min. For example, a sensor producing 7.5 pulses per
+ * second at 1 L/min uses a calibration factor of 7.5. This is loaded when
+ * the driver starts and remains fixed until reboot.
  *
  * @min 0.001
  * @decimal 3
