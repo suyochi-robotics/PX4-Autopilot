@@ -187,6 +187,7 @@ parameters:
                 0: Disabled
                 1: Enabled
             default: 0
+            reboot_required: true
 
         BAT_V_FS_THR:
             description:
@@ -201,6 +202,7 @@ parameters:
             decimal: 2
             increment: 0.01
             default: 3.60
+            reboot_required: true
 
         BAT_V_FS_DELAY:
             description:
@@ -216,6 +218,7 @@ parameters:
             decimal: 1
             increment: 0.5
             default: 10.0
+            reboot_required: true
 
         BAT_V_FS_HYST:
             description:
@@ -231,3 +234,4 @@ parameters:
             decimal: 2
             increment: 0.01
             default: 0.10
+            reboot_required: true
