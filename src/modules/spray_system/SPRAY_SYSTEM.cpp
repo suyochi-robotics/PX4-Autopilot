@@ -45,12 +45,39 @@ SpraySystem::SpraySystem() :
 	ModuleParams(nullptr)
 {
 	_spray_pub.advertise();
-	ScheduleNow();
 }
 
 int SpraySystem::init()
 {
+	updateParams();
+
+	_pump_min_pwm = _param_pump_min_pwm.get();
+	_pump_max_pwm = math::max(_param_pump_max_pwm.get(), _pump_min_pwm);
+	_pump_max_flow_rate = _param_pump_max_flow_rate.get();
+	_sprayer_min_pwm = _param_sprayer_min_pwm.get();
+	_sprayer_max_pwm = math::max(_param_sprayer_max_pwm.get(), _sprayer_min_pwm);
+	_spray_mode = _en_mode.get();
+
+	if (_spray_mode == 0) {
+		PX4_INFO("spray system disabled (SPRAY_EN_MODE=0)");
+		return PX4_ERROR;
+	}
+
+	ScheduleNow();
+
 	return PX4_OK;
+}
+
+float SpraySystem::pwmToActuatorValue(float pwm, float min_pwm, float max_pwm)
+{
+	if (max_pwm <= min_pwm) {
+		return -1.f;
+	}
+
+	// Mixer functions use [-1, 1]. Derive that value from this actuator's
+	// calibrated PWM range instead of assuming a fixed 1000-2000 us range.
+	const float normalized_pwm = (pwm - min_pwm) / (max_pwm - min_pwm);
+	return math::constrain(2.f * normalized_pwm - 1.f, -1.f, 1.f);
 }
 
 void SpraySystem::Run()
@@ -77,30 +104,13 @@ void SpraySystem::Run()
 		_armed = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
 
 		// check if vehicle is in AUTO mission
-		_in_auto = (status.nav_state >= vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION);
+		_in_auto = (status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION);
 	}
 
-	//read spray mode parameter
-	_spray_mode = _en_mode.get();
-
-	bool spray_active = false;
-
-	//decide when spray should run
-	if (_spray_mode == 1) {
-
-		// MODE 1 → always spray
-		spray_active = true;
-
-	} else if (_spray_mode == 2 && _armed) {
-
-		// MODE 2 → spray only when armed
-		spray_active = true;
-
-	} else if (_spray_mode == 3 && _in_auto) {
-
-		// MODE 3 → spray only during AUTO mission
-		spray_active = true;
-	}
+	const bool spray_active = (_spray_mode == 1)
+				  || (_spray_mode == 2 && _armed)
+				  || (_spray_mode == 3 && _in_auto)
+				  || (_spray_mode == 4 && _en_man.get() != 0);
 
 	//create spray message
 	spray_system_status_s msg{};
@@ -108,20 +118,32 @@ void SpraySystem::Run()
 
 	if (spray_active) {
 
-		// Pump logic (LPM → normalized 0-1)
-		float pump_norm = math::constrain(_pump_lpm.get(), 0.f, 8.f) / 8.f;
+		const float expected_flow = _pump_expected_flow_rate.get();
+		const float expected_speed = _sprayer_expected_speed.get();
 
-		// Nozzle logic (RPM → normalized 0-1)
-		float nozzle_norm = math::constrain(_cent_rpm.get(), 1000.f, 20000.f);
-		nozzle_norm = (nozzle_norm - 1000.f) / (20000.f - 1000.f);
+		if (expected_flow >= 0.f && _pump_max_flow_rate > 0.f) {
+			const float requested_flow = math::min(expected_flow, _pump_max_flow_rate);
+			const float flow_fraction = requested_flow / _pump_max_flow_rate;
+			const float pump_pwm = _pump_min_pwm + flow_fraction * (_pump_max_pwm - _pump_min_pwm);
+			msg.pump_output = pwmToActuatorValue(pump_pwm, _pump_min_pwm, _pump_max_pwm);
 
-		msg.pump_output = pump_norm;
-		msg.nozzle_output = nozzle_norm;
+		} else {
+			msg.pump_output = -1.f;
+		}
+
+		if (expected_speed >= 0.f) {
+			const float speed_fraction = math::constrain(expected_speed / 100.f, 0.f, 1.f);
+			const float sprayer_pwm = _sprayer_min_pwm + speed_fraction * (_sprayer_max_pwm - _sprayer_min_pwm);
+			msg.nozzle_output = pwmToActuatorValue(sprayer_pwm, _sprayer_min_pwm, _sprayer_max_pwm);
+
+		} else {
+			msg.nozzle_output = -1.f;
+		}
 
 	} else {
 
-		msg.pump_output = 0.f;
-		msg.nozzle_output = 0.f;
+		msg.pump_output = -1.f;
+		msg.nozzle_output = -1.f;
 	}
 
 	//publish message
@@ -174,9 +196,10 @@ int SpraySystem::print_status()
 
 	PX4_INFO(" Armed        : %s", _armed ? "YES" : "NO");
 	PX4_INFO(" Auto Mission : %s", _in_auto ? "YES" : "NO");
-	PX4_INFO(" Mode         : %d", (int)_en_mode.get());
-	PX4_INFO(" Pump LPM     : %.2f", (double)_pump_lpm.get());
-	PX4_INFO(" Cent RPM     : %.2f", (double)_cent_rpm.get());
+	PX4_INFO(" Mode         : %d", (int)_spray_mode);
+	PX4_INFO(" Manual enable: %s", _en_man.get() ? "YES" : "NO");
+	PX4_INFO(" Pump flow    : %.2f LPM", (double)_pump_expected_flow_rate.get());
+	PX4_INFO(" Sprayer speed: %.2f %%", (double)_sprayer_expected_speed.get());
 	return PX4_OK;
 }
 
