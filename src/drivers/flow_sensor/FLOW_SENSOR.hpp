@@ -64,8 +64,18 @@ public:
 	static int task_spawn(int argc, char *argv[]);
 	static int custom_command(int argc, char *argv[]);
 	static int print_usage(const char *reason = nullptr);
-	static constexpr hrt_abstime INTERVAL = 1_s;
+	// Publish often enough for telemetry consumers to see fresh data, while
+	// calculating the rate over a longer window to retain useful resolution at
+	// low flow rates.
+	static constexpr hrt_abstime INTERVAL = 100_ms;
+	static constexpr hrt_abstime RATE_WINDOW = 1_s;
+	static constexpr uint8_t RATE_SAMPLE_COUNT = RATE_WINDOW / INTERVAL + 1;
 private:
+	struct RateSample {
+		hrt_abstime timestamp;
+		uint32_t pulse_count;
+	};
+
 	static constexpr int32_t FLOW_SENSOR_FUNCTION_ID = 2071;
 
 	int _channel{-1};
@@ -75,6 +85,9 @@ private:
 	hrt_abstime _last_publish_time{0};
 	float _cal_factor{0.0f};
 	float _total_volume_liters{0.0f};
+	RateSample _rate_samples[RATE_SAMPLE_COUNT] {};
+	uint8_t _rate_sample_count{0};
+	uint8_t _next_rate_sample{0};
 
 	uORB::Publication<sensor_flow_sensor_s> _flow_pub{ORB_ID(sensor_flow_sensor)};
 

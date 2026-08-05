@@ -103,6 +103,9 @@ bool FlowSensor::init()
 	}
 
 	_last_publish_time = hrt_absolute_time();
+	_rate_samples[0] = {_last_publish_time, _pulse_count.load()};
+	_rate_sample_count = 1;
+	_next_rate_sample = 1;
 	ScheduleDelayed(INTERVAL);
 	return true;
 }
@@ -115,16 +118,41 @@ void FlowSensor::Run()
 	}
 
 	const hrt_abstime now = hrt_absolute_time();
-	const hrt_abstime elapsed_us = now - _last_publish_time;
-	const float elapsed_s = static_cast<float>(elapsed_us) * 1e-6f;
+	const uint32_t pulse_count = _pulse_count.load();
 
-	uint32_t pulse_count = _pulse_count.load();
+	_rate_samples[_next_rate_sample] = {now, pulse_count};
+	_next_rate_sample = (_next_rate_sample + 1) % RATE_SAMPLE_COUNT;
 
-	while (!_pulse_count.compare_exchange(&pulse_count, 0)) {}
+	if (_rate_sample_count < RATE_SAMPLE_COUNT) {
+		++_rate_sample_count;
+	}
 
-	// FLOW_CAL_FACTOR is calibrated for a one-second measurement interval.
-	const float flow_rate_lpm = (static_cast<float>(pulse_count) / _cal_factor) / elapsed_s;
-	_total_volume_liters += flow_rate_lpm * elapsed_s / 60.0f;
+	// Use the sample nearest to, but not newer than, one second ago. Before
+	// the window has filled, use the oldest available sample.
+	const hrt_abstime window_start = (now > RATE_WINDOW) ? now - RATE_WINDOW : 0;
+	const RateSample *reference = nullptr;
+
+	for (uint8_t i = 0; i < _rate_sample_count; ++i) {
+		const RateSample &sample = _rate_samples[i];
+
+		if (reference == nullptr || sample.timestamp < reference->timestamp) {
+			reference = &sample;
+		}
+
+		if (sample.timestamp <= window_start
+		    && (reference->timestamp > window_start || sample.timestamp > reference->timestamp)) {
+			reference = &sample;
+		}
+	}
+
+	const float elapsed_s = static_cast<float>(now - reference->timestamp) * 1e-6f;
+	const uint32_t pulses_in_window = pulse_count - reference->pulse_count;
+	const float flow_rate_lpm = (elapsed_s > 0.0f)
+				    ? (static_cast<float>(pulses_in_window) / _cal_factor) / elapsed_s : 0.0f;
+
+	// A pulse represents 1 / (FLOW_CAL_FACTOR * 60) litres. Use the monotonic
+	// count so the accumulated volume is independent of publish timing.
+	_total_volume_liters = static_cast<float>(pulse_count) / (_cal_factor * 60.0f);
 
 	sensor_flow_sensor_s flow_msg{};
 	flow_msg.timestamp = now;

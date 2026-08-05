@@ -181,19 +181,19 @@ parameters:
 
         BAT_V_FS_EN:
             description:
-                short: Enable battery voltage failsafe
+                short: Enable compensated-voltage battery failsafe
             type: enum
             values:
                 0: Disabled
                 1: Enabled
-            default: 1
+            default: 0
 
         BAT_V_FS_THR:
             description:
                 short: Battery voltage failsafe threshold.
                 long: |
-                    Defines the filtered per-cell voltage threshold used for the
-                    voltage-based battery failsafe.
+                    Defines the filtered, load-compensated per-cell voltage
+                    threshold used for the voltage-based battery failsafe.
             type: float
             unit: V
             min: 2.5
@@ -206,9 +206,9 @@ parameters:
             description:
                 short: Battery voltage failsafe delay.
                 long: |
-                    Defines how long the filtered per-cell voltage must remain
-                    below the configured threshold before the voltage-based
-                    battery failsafe is triggered.
+                    Defines how long the filtered, load-compensated per-cell
+                    voltage must remain below the configured threshold before
+                    the voltage-based battery failsafe is triggered.
             type: float
             unit: s
             min: 0
@@ -216,3 +216,18 @@ parameters:
             decimal: 1
             increment: 0.5
             default: 10.0
+
+        BAT_V_FS_HYST:
+            description:
+                short: Battery voltage failsafe recovery hysteresis.
+                long: |
+                    The compensated per-cell voltage must rise above the failsafe
+                    threshold by this amount before an active voltage warning is
+                    cleared. This prevents warning oscillation near the threshold.
+            type: float
+            unit: V
+            min: 0
+            max: 0.5
+            decimal: 2
+            increment: 0.01
+            default: 0.10

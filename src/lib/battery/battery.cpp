@@ -96,6 +96,7 @@ Battery::Battery(int index, ModuleParams *parent, const int sample_interval_us, 
 	_param_handles.v_fs_en    = param_find("BAT_V_FS_EN");
 	_param_handles.v_fs_thr   = param_find("BAT_V_FS_THR");
 	_param_handles.v_fs_delay = param_find("BAT_V_FS_DELAY");
+	_param_handles.v_fs_hyst  = param_find("BAT_V_FS_HYST");
 
 	updateParams();
 }
@@ -332,13 +333,37 @@ uint8_t Battery::determineVoltageWarning(const hrt_abstime &timestamp)
 	if ((_params.v_fs_en == 0) || !_connected || (_params.n_cells <= 0)) {
 		_voltage_fs_timer_running = false;
 		_voltage_fs_start = 0;
+		_voltage_fs_warning_active = false;
 		return battery_status_s::WARNING_NONE;
 	}
 
-	// Calculate measured per-cell voltage
-	const float cell_voltage = _voltage_v / _params.n_cells;
+	// This is the same filtered, load-compensated per-cell voltage used by the
+	// voltage-based state-of-charge estimate. Raw pack voltage would trigger
+	// falsely during normal high-current voltage sag.
+	const float cell_voltage = _cell_voltage_filter_v.getState();
 
-	if (cell_voltage <= _params.v_fs_thr) {
+	if (!PX4_ISFINITE(cell_voltage)) {
+		_voltage_fs_timer_running = false;
+		_voltage_fs_start = 0;
+		_voltage_fs_warning_active = false;
+		return battery_status_s::WARNING_NONE;
+	}
+
+	const bool below_threshold = cell_voltage <= _params.v_fs_thr;
+	const bool recovered = cell_voltage > (_params.v_fs_thr + _params.v_fs_hyst);
+
+	if (_voltage_fs_warning_active) {
+		if (recovered) {
+			_voltage_fs_warning_active = false;
+			_voltage_fs_timer_running = false;
+			_voltage_fs_start = 0;
+
+		} else {
+			return battery_status_s::WARNING_CRITICAL;
+		}
+	}
+
+	if (below_threshold) {
 
 		// Start timer only once
 		if (!_voltage_fs_timer_running) {
@@ -348,12 +373,14 @@ uint8_t Battery::determineVoltageWarning(const hrt_abstime &timestamp)
 
 		// Trigger warning if voltage remains below threshold for configured delay
 		if ((timestamp - _voltage_fs_start) >= static_cast<hrt_abstime>(_params.v_fs_delay * 1_s)) {
+			_voltage_fs_warning_active = true;
 			return battery_status_s::WARNING_CRITICAL;
 		}
 
-	} else {
+	} else if (recovered) {
 
-		// Voltage recovered, reset timer
+		// Reset only after a meaningful recovery, to avoid timer oscillation near
+		// the threshold.
 		_voltage_fs_timer_running = false;
 		_voltage_fs_start = 0;
 	}
@@ -449,6 +476,7 @@ void Battery::updateParams()
 	param_get(_param_handles.v_fs_en, &_params.v_fs_en);
 	param_get(_param_handles.v_fs_thr, &_params.v_fs_thr);
 	param_get(_param_handles.v_fs_delay, &_params.v_fs_delay);
+	param_get(_param_handles.v_fs_hyst, &_params.v_fs_hyst);
 
 	if (n_cells != _params.n_cells) {
 		_internal_resistance_initialized = false;

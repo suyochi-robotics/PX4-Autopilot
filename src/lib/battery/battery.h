@@ -129,6 +129,7 @@ protected:
 		param_t v_fs_en;
 		param_t v_fs_thr;
 		param_t v_fs_delay;
+		param_t v_fs_hyst;
 	} _param_handles{};
 
 	struct {
@@ -147,6 +148,7 @@ protected:
 		int32_t v_fs_en;
 		float v_fs_thr;
 		float v_fs_delay;
+		float v_fs_hyst;
 	} _params{};
 
 	const int _index;
@@ -171,6 +173,7 @@ private:
 	// Suyochi Params
 	hrt_abstime _voltage_fs_start{0};
 	bool _voltage_fs_timer_running{false};
+	bool _voltage_fs_warning_active{false};
 
 	bool _external_state_of_charge{false}; ///< inticates that the soc is injected and not updated by this library
 
