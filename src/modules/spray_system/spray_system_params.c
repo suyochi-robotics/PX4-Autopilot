@@ -24,23 +24,14 @@ PARAM_DEFINE_FLOAT(PUMP_MIN_PWM, 1050.f);
 PARAM_DEFINE_FLOAT(PUMP_MAX_PWM, 1950.f);
 
 /**
- * Pump flow at PUMP_MAX_PWM
+ * Requested pump speed. A negative value disables the pump.
  *
- * @min 0
- * @max 100
- * @reboot_required true
- * @group Spray System
- */
-PARAM_DEFINE_FLOAT(PUMP_MAX_FLOW, 8.f);
-
-/**
- * Requested pump flow rate. A negative value disables the pump.
- *
+ * @unit %
  * @min -1
  * @max 100
  * @group Spray System
  */
-PARAM_DEFINE_FLOAT(PUMP_EXP_FLOW, 6.f);
+PARAM_DEFINE_FLOAT(PUMP_EXP_SPD, 100.f);
 
 /**
  * Centrifugal sprayer PWM at zero speed

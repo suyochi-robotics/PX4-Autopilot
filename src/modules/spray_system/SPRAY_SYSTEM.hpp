@@ -83,7 +83,6 @@ private:
 	// metadata marks them reboot-required, so changes take effect after restart.
 	float _pump_min_pwm{1050.f};
 	float _pump_max_pwm{1950.f};
-	float _pump_max_flow_rate{8.f};
 	float _sprayer_min_pwm{1050.f};
 	float _sprayer_max_pwm{1950.f};
 	int32_t _spray_mode{3};
@@ -94,8 +93,7 @@ private:
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::PUMP_MIN_PWM>) _param_pump_min_pwm,
 		(ParamFloat<px4::params::PUMP_MAX_PWM>) _param_pump_max_pwm,
-		(ParamFloat<px4::params::PUMP_MAX_FLOW>) _param_pump_max_flow_rate,
-		(ParamFloat<px4::params::PUMP_EXP_FLOW>) _pump_expected_flow_rate,
+		(ParamFloat<px4::params::PUMP_EXP_SPD>) _pump_expected_speed,
 		(ParamFloat<px4::params::SPRAYER_MIN_PWM>) _param_sprayer_min_pwm,
 		(ParamFloat<px4::params::SPRAYER_MAX_PWM>) _param_sprayer_max_pwm,
 		(ParamFloat<px4::params::SPRYAER_EXP_SPD>) _sprayer_expected_speed,

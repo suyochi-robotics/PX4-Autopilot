@@ -53,7 +53,6 @@ int SpraySystem::init()
 
 	_pump_min_pwm = _param_pump_min_pwm.get();
 	_pump_max_pwm = math::max(_param_pump_max_pwm.get(), _pump_min_pwm);
-	_pump_max_flow_rate = _param_pump_max_flow_rate.get();
 	_sprayer_min_pwm = _param_sprayer_min_pwm.get();
 	_sprayer_max_pwm = math::max(_param_sprayer_max_pwm.get(), _sprayer_min_pwm);
 	_spray_mode = _en_mode.get();
@@ -118,13 +117,12 @@ void SpraySystem::Run()
 
 	if (spray_active) {
 
-		const float expected_flow = _pump_expected_flow_rate.get();
+		const float expected_pump_speed = _pump_expected_speed.get();
 		const float expected_speed = _sprayer_expected_speed.get();
 
-		if (expected_flow >= 0.f && _pump_max_flow_rate > 0.f) {
-			const float requested_flow = math::min(expected_flow, _pump_max_flow_rate);
-			const float flow_fraction = requested_flow / _pump_max_flow_rate;
-			const float pump_pwm = _pump_min_pwm + flow_fraction * (_pump_max_pwm - _pump_min_pwm);
+		if (expected_pump_speed >= 0.f) {
+			const float speed_fraction = math::constrain(expected_pump_speed / 100.f, 0.f, 1.f);
+			const float pump_pwm = _pump_min_pwm + speed_fraction * (_pump_max_pwm - _pump_min_pwm);
 			msg.pump_output = pwmToActuatorValue(pump_pwm, _pump_min_pwm, _pump_max_pwm);
 
 		} else {
@@ -198,7 +196,7 @@ int SpraySystem::print_status()
 	PX4_INFO(" Auto Mission : %s", _in_auto ? "YES" : "NO");
 	PX4_INFO(" Mode         : %d", (int)_spray_mode);
 	PX4_INFO(" Manual enable: %s", _en_man.get() ? "YES" : "NO");
-	PX4_INFO(" Pump flow    : %.2f LPM", (double)_pump_expected_flow_rate.get());
+	PX4_INFO(" Pump speed   : %.2f %%", (double)_pump_expected_speed.get());
 	PX4_INFO(" Sprayer speed: %.2f %%", (double)_sprayer_expected_speed.get());
 	return PX4_OK;
 }
