@@ -214,6 +214,7 @@ MissionBase::on_activation()
 	if (_mission.current_seq > 0) {
 		resetItemCache();
 		updateCachedItemsUpToIndex(_mission.current_seq - 1);
+		replayCachedSprayerItem();
 	}
 
 	int32_t resume_index = _inactivation_index > 0 ? _inactivation_index : 0;
@@ -1306,6 +1307,10 @@ void MissionBase::cacheItem(const mission_item_s &mission_item)
 		_last_speed_change_item = mission_item;
 		break;
 
+	case NAV_CMD_DO_SPRAYER:
+		_last_sprayer_item = mission_item;
+		break;
+
 	case NAV_CMD_DO_VTOL_TRANSITION:
 		// delete speed changes after a VTOL transition
 		_last_speed_change_item = {};
@@ -1353,12 +1358,21 @@ void MissionBase::replayCachedSpeedChangeItems()
 	}
 }
 
+void MissionBase::replayCachedSprayerItem()
+{
+	if (_last_sprayer_item.nav_cmd == NAV_CMD_DO_SPRAYER) {
+		issue_command(_last_sprayer_item);
+		_last_sprayer_item = {};
+	}
+}
+
 void MissionBase::resetItemCache()
 {
 	_last_gimbal_configure_item = {};
 	_last_gimbal_control_item = {};
 	_last_camera_mode_item = {};
 	_last_camera_trigger_item = {};
+	_last_sprayer_item = {};
 }
 
 bool MissionBase::haveCachedGimbalItems()

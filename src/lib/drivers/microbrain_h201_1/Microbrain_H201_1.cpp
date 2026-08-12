@@ -243,7 +243,7 @@ int Microbrain_H201_1::collect()
 	int bytes_available = 0;
 
 	if (::ioctl(_fd, FIONREAD, (unsigned long)&bytes_available) < 0) {
-		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+		if (errno != EAGAIN) {
 			PX4_ERR("FIONREAD failed: %d", errno);
 			perf_count(_comms_errors);
 		}

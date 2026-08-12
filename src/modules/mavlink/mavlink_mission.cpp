@@ -1619,6 +1619,10 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 			mission_item->nav_cmd = (NAV_CMD)mavlink_mission_item->command;
 			break;
 
+		case MAV_CMD_SUYOCHI_DO_SPRAYER:
+			mission_item->nav_cmd = (NAV_CMD)mavlink_mission_item->command;
+			break;
+
 		default:
 			mission_item->nav_cmd = NAV_CMD_INVALID;
 

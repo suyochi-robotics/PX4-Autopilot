@@ -424,6 +424,9 @@ private:
 	 */
 	void replayCachedSpeedChangeItems();
 
+	/// Replay the latest spray command after returning to the resumed mission location.
+	void replayCachedSprayerItem();
+
 	/**
 	 * @brief Check if there are cached gimbal items to be replayed
 	 *
@@ -483,6 +486,7 @@ private:
 	mission_item_s _last_camera_mode_item {};
 	mission_item_s _last_camera_trigger_item {};
 	mission_item_s _last_speed_change_item {};
+	mission_item_s _last_sprayer_item {};
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(
 		ModuleParams,
