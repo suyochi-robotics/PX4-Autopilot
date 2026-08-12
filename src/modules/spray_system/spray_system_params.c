@@ -66,23 +66,18 @@ PARAM_DEFINE_FLOAT(SPRAYER_MAX_PWM, 1950.f);
 PARAM_DEFINE_FLOAT(SPRYAER_EXP_SPD, 100.f);
 
 /**
- * Spray enable mode
+ * Start the spray system driver during system initialization.
  *
- * 0 = Disabled
- * 1 = Always ON
- * 2 = ON when vehicle armed
- * 3 = ON during AUTO mission
- * 4 = Manually enabled with SPRAY_EN_MAN
- *
+ * @boolean
  * @min 0
- * @max 4
+ * @max 1
  * @reboot_required true
  * @group Spray System
  */
-PARAM_DEFINE_INT32(SPRAY_EN_MODE, 3);
+PARAM_DEFINE_INT32(SPRAY_ENABLE, 0);
 
 /**
- * Manual spray enable, used when SPRAY_EN_MODE is 4
+ * Manually enable spray output.
  *
  * @boolean
  * @min 0

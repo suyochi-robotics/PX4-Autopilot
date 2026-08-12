@@ -49,10 +49,10 @@
 #include <uORB/Subscription.hpp>
 
 #include <uORB/topics/spray_system_status.h>
-#include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/vehicle_command.h>
+#include <uORB/topics/parameter_update.h>
 
 #include <mathlib/mathlib.h>
-#include <uORB/topics/parameter_update.h>
 
 using namespace time_literals;
 
@@ -73,11 +73,12 @@ public:
 
 private:
 	uORB::Publication<spray_system_status_s> _spray_pub{ORB_ID(spray_system_status)};
-	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
+	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 
-	bool _armed{false};
-	bool _in_auto{false};
+	bool _spray_enabled{false};
+	float _command_pump_speed{NAN};
+	float _command_nozzle_speed{NAN};
 
 	// PWM calibration parameters are intentionally cached during init(). Their
 	// metadata marks them reboot-required, so changes take effect after restart.
@@ -85,9 +86,9 @@ private:
 	float _pump_max_pwm{1950.f};
 	float _sprayer_min_pwm{1050.f};
 	float _sprayer_max_pwm{1950.f};
-	int32_t _spray_mode{3};
 
 	static float pwmToActuatorValue(float pwm, float min_pwm, float max_pwm);
+	void updateSprayEnable();
 
 	void Run() override;
 	DEFINE_PARAMETERS(
@@ -97,7 +98,6 @@ private:
 		(ParamFloat<px4::params::SPRAYER_MIN_PWM>) _param_sprayer_min_pwm,
 		(ParamFloat<px4::params::SPRAYER_MAX_PWM>) _param_sprayer_max_pwm,
 		(ParamFloat<px4::params::SPRYAER_EXP_SPD>) _sprayer_expected_speed,
-		(ParamInt<px4::params::SPRAY_EN_MODE>) _en_mode,
-		(ParamInt<px4::params::SPRAY_EN_MAN>) _en_man
+		(ParamInt<px4::params::SPRAY_EN_MAN>) _spray_enable_manual
 	)
 };

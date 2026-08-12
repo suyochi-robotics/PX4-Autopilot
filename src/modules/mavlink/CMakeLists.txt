@@ -68,6 +68,7 @@ add_custom_command(
 		git_mavlink_v2
 		${MAVLINK_GIT_DIR}/pymavlink/tools/mavgen.py
 		${MAVLINK_GIT_DIR}/message_definitions/v1.0/${CONFIG_MAVLINK_DIALECT}.xml
+		${MAVLINK_GIT_DIR}/message_definitions/v1.0/suyochi.xml
 		${BOARD_DEFCONFIG}
 
 		# generate after uAvionix

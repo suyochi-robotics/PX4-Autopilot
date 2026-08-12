@@ -82,6 +82,6 @@ private:
 
 	uORB::Subscription _spray_sub{ORB_ID(spray_system_status)};
 
-	float _pump_output{0.f};
-	float _nozzle_output{0.f};
+	float _pump_output{-1.f};
+	float _nozzle_output{-1.f};
 };

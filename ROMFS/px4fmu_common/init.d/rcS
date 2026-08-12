@@ -573,7 +573,7 @@ else
 	fi
 
 	# Spray System driver
-	if param greater -s SPRAY_EN_MODE 0
+	if param greater -s SPRAY_ENABLE 0
 	then
 		spray_system start -X &
 	fi

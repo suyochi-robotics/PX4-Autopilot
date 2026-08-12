@@ -40,6 +40,8 @@
 
 #include "SPRAY_SYSTEM.hpp"
 
+#include <cmath>
+
 SpraySystem::SpraySystem() :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
 	ModuleParams(nullptr)
@@ -55,12 +57,6 @@ int SpraySystem::init()
 	_pump_max_pwm = math::max(_param_pump_max_pwm.get(), _pump_min_pwm);
 	_sprayer_min_pwm = _param_sprayer_min_pwm.get();
 	_sprayer_max_pwm = math::max(_param_sprayer_max_pwm.get(), _sprayer_min_pwm);
-	_spray_mode = _en_mode.get();
-
-	if (_spray_mode == 0) {
-		PX4_INFO("spray system disabled (SPRAY_EN_MODE=0)");
-		return PX4_ERROR;
-	}
 
 	ScheduleNow();
 
@@ -79,6 +75,32 @@ float SpraySystem::pwmToActuatorValue(float pwm, float min_pwm, float max_pwm)
 	return math::constrain(2.f * normalized_pwm - 1.f, -1.f, 1.f);
 }
 
+void SpraySystem::updateSprayEnable()
+{
+	vehicle_command_s command{};
+
+	while (_vehicle_command_sub.update(&command)) {
+		if (command.command == vehicle_command_s::VEHICLE_CMD_DO_SPRAYER) {
+			const bool valid_enable = PX4_ISFINITE(command.param1)
+						  && ((command.param1 >= -0.001f && command.param1 <= 0.001f)
+						      || (command.param1 >= 0.999f && command.param1 <= 1.001f));
+			const bool valid_pump_speed = std::isnan(command.param2)
+						      || (PX4_ISFINITE(command.param2) && command.param2 >= 0.f && command.param2 <= 100.f);
+			const bool valid_nozzle_speed = std::isnan(command.param3)
+							|| (PX4_ISFINITE(command.param3) && command.param3 >= 0.f && command.param3 <= 100.f);
+
+			if (!valid_enable || !valid_pump_speed || !valid_nozzle_speed) {
+				PX4_WARN("Ignoring invalid DO_SPRAYER command");
+				continue;
+			}
+
+			_spray_enabled = command.param1 > 0.5f;
+			_command_pump_speed = command.param2;
+			_command_nozzle_speed = command.param3;
+		}
+	}
+}
+
 void SpraySystem::Run()
 {
 	if (should_exit()) {
@@ -86,7 +108,6 @@ void SpraySystem::Run()
 		return;
 	}
 
-	// handle parameter updates
 	parameter_update_s pupdate;
 
 	if (_parameter_update_sub.updated()) {
@@ -94,31 +115,18 @@ void SpraySystem::Run()
 		updateParams();
 	}
 
-	//read vehicle status
-	vehicle_status_s status{};
-
-	if (_vehicle_status_sub.copy(&status)) {
-
-		// check if vehicle is armed
-		_armed = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
-
-		// check if vehicle is in AUTO mission
-		_in_auto = (status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION);
-	}
-
-	const bool spray_active = (_spray_mode == 1)
-				  || (_spray_mode == 2 && _armed)
-				  || (_spray_mode == 3 && _in_auto)
-				  || (_spray_mode == 4 && _en_man.get() != 0);
+	updateSprayEnable();
 
 	//create spray message
 	spray_system_status_s msg{};
 	msg.timestamp = hrt_absolute_time();
+	const bool spray_active = _spray_enabled || (_spray_enable_manual.get() != 0);
 
 	if (spray_active) {
 
-		const float expected_pump_speed = _pump_expected_speed.get();
-		const float expected_speed = _sprayer_expected_speed.get();
+		const float expected_pump_speed = PX4_ISFINITE(_command_pump_speed) ? _command_pump_speed : _pump_expected_speed.get();
+		const float expected_speed = PX4_ISFINITE(_command_nozzle_speed) ? _command_nozzle_speed :
+					     _sprayer_expected_speed.get();
 
 		if (expected_pump_speed >= 0.f) {
 			const float speed_fraction = math::constrain(expected_pump_speed / 100.f, 0.f, 1.f);
@@ -192,10 +200,8 @@ int SpraySystem::print_status()
 {
 	PX4_INFO("Spray System Status:");
 
-	PX4_INFO(" Armed        : %s", _armed ? "YES" : "NO");
-	PX4_INFO(" Auto Mission : %s", _in_auto ? "YES" : "NO");
-	PX4_INFO(" Mode         : %d", (int)_spray_mode);
-	PX4_INFO(" Manual enable: %s", _en_man.get() ? "YES" : "NO");
+	PX4_INFO(" Enabled      : %s", _spray_enabled ? "YES" : "NO");
+	PX4_INFO(" Manual enable: %s", _spray_enable_manual.get() ? "YES" : "NO");
 	PX4_INFO(" Pump speed   : %.2f %%", (double)_pump_expected_speed.get());
 	PX4_INFO(" Sprayer speed: %.2f %%", (double)_sprayer_expected_speed.get());
 	return PX4_OK;
