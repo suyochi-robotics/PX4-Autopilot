@@ -120,4 +120,5 @@ px4_add_romfs_files(
 	22555_gz_sr20
 	22556_gz_sr04
 	22557_gz_sr08
+	22558_gz_eft
 )
