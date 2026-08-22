@@ -53,6 +53,15 @@ int SpraySystem::init()
 {
 	updateParams();
 
+	_spray_system_configured = _param_spray_enable.get() != 0;
+	_flow_sensor_configured = _param_flow_cap_enable.get() != 0;
+
+	const float configured_min_flow = _param_spry_flow_min.get();
+	_flow_min_lpm = PX4_ISFINITE(configured_min_flow) ? math::max(configured_min_flow, 0.f) : 0.f;
+
+	const float configured_timeout = _param_spry_flow_tout.get();
+	const float timeout_s = PX4_ISFINITE(configured_timeout) ? math::max(configured_timeout, 0.1f) : 5.f;
+	_flow_timeout_us = static_cast<hrt_abstime>(timeout_s * 1e6f);
 	_pump_min_pwm = _param_pump_min_pwm.get();
 	_pump_max_pwm = math::max(_param_pump_max_pwm.get(), _pump_min_pwm);
 	_sprayer_min_pwm = _param_sprayer_min_pwm.get();
@@ -101,6 +110,92 @@ void SpraySystem::updateSprayEnable()
 	}
 }
 
+bool SpraySystem::flowFailsafeMonitoringRequired() const
+{
+	const vehicle_status_s &vehicle_status = _vehicle_status_sub.get();
+	const vehicle_land_detected_s &land_detected = _vehicle_land_detected_sub.get();
+	const bool manual_pump_enabled = (_spray_enable_manual.get() != 0)
+					 && PX4_ISFINITE(_pump_expected_speed.get()) && (_pump_expected_speed.get() > 0.f);
+
+	return _spray_system_configured
+	       && _flow_sensor_configured
+	       && (vehicle_status.timestamp != 0)
+	       && (land_detected.timestamp != 0)
+	       && (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED)
+	       && !land_detected.landed
+	       && (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION)
+	       && (manual_pump_enabled || _spray_enabled);
+}
+
+bool SpraySystem::flowSensorDataIsFresh(hrt_abstime now) const
+{
+	return (_flow_sensor.timestamp != 0)
+	       && (now >= _flow_sensor.timestamp)
+	       && ((now - _flow_sensor.timestamp) <= FLOW_SENSOR_DATA_TIMEOUT)
+	       && PX4_ISFINITE(_flow_sensor.flow_rate_lpm);
+}
+
+void SpraySystem::requestFlowFailsafeRTL(hrt_abstime now)
+{
+	const vehicle_status_s &vehicle_status = _vehicle_status_sub.get();
+	vehicle_command_s rtl_command{};
+	rtl_command.timestamp = now;
+	rtl_command.command = vehicle_command_s::VEHICLE_CMD_NAV_RETURN_TO_LAUNCH;
+	rtl_command.source_system = vehicle_status.system_id;
+	rtl_command.source_component = vehicle_status.component_id;
+	rtl_command.target_system = vehicle_status.system_id;
+	rtl_command.target_component = vehicle_status.component_id;
+	rtl_command.confirmation = false;
+	rtl_command.from_external = false;
+	_vehicle_command_pub.publish(rtl_command);
+
+	PX4_ERR("Spray flow lost for %.1f s, returning to launch", static_cast<double>(_flow_timeout_us) * 1e-6);
+}
+
+void SpraySystem::updateFlowFailsafe(hrt_abstime now)
+{
+	_vehicle_status_sub.update();
+	_vehicle_land_detected_sub.update();
+
+	sensor_flow_sensor_s flow_sensor{};
+
+	if (_flow_sensor_sub.update(&flow_sensor)) {
+		_flow_sensor = flow_sensor;
+	}
+
+	if (_flow_fault_latched) {
+		// The latch inhibits the pump/nozzle through RTL. Clear it only after a
+		// disarm, when a subsequent flight starts with a clean monitor state.
+		if (_vehicle_status_sub.get().arming_state != vehicle_status_s::ARMING_STATE_ARMED) {
+			_flow_fault_latched = false;
+		}
+
+		_zero_flow_start = 0;
+		return;
+	}
+
+	if (!flowFailsafeMonitoringRequired() || !flowSensorDataIsFresh(now)) {
+		_zero_flow_start = 0;
+		return;
+	}
+
+	if (_flow_sensor.flow_rate_lpm > _flow_min_lpm) {
+		_zero_flow_start = 0;
+		return;
+	}
+
+	if (_zero_flow_start == 0) {
+		_zero_flow_start = now;
+		return;
+	}
+
+	if ((now - _zero_flow_start) >= _flow_timeout_us) {
+		_flow_fault_latched = true;
+		_zero_flow_start = 0;
+		requestFlowFailsafeRTL(now);
+	}
+}
+
 void SpraySystem::Run()
 {
 	if (should_exit()) {
@@ -117,12 +212,15 @@ void SpraySystem::Run()
 
 	updateSprayEnable();
 
+	const hrt_abstime now = hrt_absolute_time();
+	updateFlowFailsafe(now);
+
 	//create spray message
 	spray_system_status_s msg{};
-	msg.timestamp = hrt_absolute_time();
+	msg.timestamp = now;
 	const bool spray_active = _spray_enabled || (_spray_enable_manual.get() != 0);
 
-	if (spray_active) {
+	if (spray_active && !_flow_fault_latched) {
 
 		const float expected_pump_speed = PX4_ISFINITE(_command_pump_speed) ? _command_pump_speed : _pump_expected_speed.get();
 		const float expected_speed = PX4_ISFINITE(_command_nozzle_speed) ? _command_nozzle_speed :
@@ -201,6 +299,7 @@ int SpraySystem::print_status()
 	PX4_INFO("Spray System Status:");
 
 	PX4_INFO(" Enabled      : %s", _spray_enabled ? "YES" : "NO");
+	PX4_INFO(" Flow fault   : %s", _flow_fault_latched ? "YES" : "NO");
 	PX4_INFO(" Manual enable: %s", _spray_enable_manual.get() ? "YES" : "NO");
 	PX4_INFO(" Pump speed   : %.2f %%", (double)_pump_expected_speed.get());
 	PX4_INFO(" Sprayer speed: %.2f %%", (double)_sprayer_expected_speed.get());
