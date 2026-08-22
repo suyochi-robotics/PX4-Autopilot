@@ -34,6 +34,29 @@ PARAM_DEFINE_FLOAT(PUMP_MAX_PWM, 1950.f);
 PARAM_DEFINE_FLOAT(PUMP_EXP_SPD, 100.f);
 
 /**
+ * Minimum acceptable liquid flow while the spray flow failsafe is active.
+ *
+ * @min 0
+ * @max 100
+ * @decimal 3
+ * @reboot_required true
+ * @group Spray System
+ */
+PARAM_DEFINE_FLOAT(SPRY_FLOW_MIN, 0.f);
+
+/**
+ * Maximum duration of low flow before the spray flow failsafe requests Return mode.
+ *
+ * @unit s
+ * @min 0.1
+ * @max 60
+ * @decimal 1
+ * @reboot_required true
+ * @group Spray System
+ */
+PARAM_DEFINE_FLOAT(SPRY_FLOW_TOUT, 5.f);
+
+/**
  * Centrifugal sprayer PWM at zero speed
  *
  * @unit us
